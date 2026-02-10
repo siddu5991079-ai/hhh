@@ -1,0 +1,75 @@
+name: 24/7 Cricket Streamer
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Paste CricHD Link Here (Default: Star Sports)'
+        required: true
+        default: 'https://crichdbest.com/player.php?id=starsp3'
+
+jobs:
+  run-stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # 6 Hours Limit
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Install System Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg google-chrome-stable
+
+    - name: Install Python Requirements
+      run: |
+        pip install selenium selenium-wire webdriver-manager blinker==1.7.0 "setuptools<70"
+
+    - name: Start The Bot
+      env:
+        # Yeh line input ko Python mein bhejti hai
+        TARGET_URL: ${{ inputs.target_url }}
+      run: python -u final_bot.py
+
+
+
+
+
+
+
+# ========== 300% correct hai bot correct in action but humey is ko dynamic link dena hu website k url jaahaa par video player hai ===================
+
+
+
+
+# name: 24/7 Cricket Streamer
+
+# on:
+#   workflow_dispatch:  # Matlab: Hum button dabayenge tab chalega
+
+# jobs:
+#   run-stream:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 360 # 6 Ghante baad ruk jayega
+
+#     steps:
+#     # 1. Hamara Code uthao
+#     - name: Checkout Code
+#       uses: actions/checkout@v3
+
+#     # 2. Chrome aur FFmpeg install karo
+#     - name: Install System Tools
+#       run: |
+#         sudo apt-get update
+#         sudo apt-get install -y ffmpeg google-chrome-stable
+
+#     # 3. Python Libraries install karo
+#     - name: Install Python Requirements
+#       run: |
+#         pip install selenium selenium-wire webdriver-manager blinker==1.7.0 "setuptools<70"
+
+#     # 4. Hamara Final Bot chalao
+#     - name: Start The Bot
+      # run: python final_bot.py
+      # run: python -u final_bot.py
