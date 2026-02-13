@@ -148,7 +148,7 @@ def main():
             if current_process: current_process.terminate()
         else:
             print("[❌] Failed. Retry in 1 min.")
-            time.sleep(60)
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()
