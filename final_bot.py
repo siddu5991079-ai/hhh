@@ -1,3 +1,8 @@
+
+
+
+# ===== temporary fix with proxy =========================
+
 import os
 import time
 import subprocess
@@ -16,12 +21,11 @@ DEFAULT_URL = "https://dadocric.st/player.php?id=willowextra"
 TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
 
 # 1️⃣ APNI FRESH OK.RU STREAM KEY YAHAN DALEIN
-# STREAM_KEY = "NAYI_STREAM_KEY_YAHAN_DALEIN"
-STREAM_KEY = "11523921485458_10535073221266_x3wpukcvda"  # <-- NAYA: OK.ru Stream Key
+STREAM_KEY = "NAYI_STREAM_KEY_YAHAN_DALEIN" 
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
 
 # 2️⃣ APNI WEBSHARE PROXY YAHAN DALEIN 
-# Yeh sirf link fetch karne (KB's) mein use hogi
+# Format: "http://username:password@ip_address:port"
 PROXY_URL = "http://shafi_user:pass1234@185.199.229.156:80"
 
 DEFAULT_SLEEP = 45 * 60 
@@ -31,7 +35,7 @@ PKT = timezone(timedelta(hours=5))
 def get_link_with_headers():
     print(f"\n========================================")
     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
-    print(f"[🔍] [STEP 2] Proxy Set for Link Fetching: {PROXY_URL.split('@')[-1]}")
+    print(f"[🔍] [STEP 2] Proxy Set: {PROXY_URL.split('@')[-1]} (Hiding credentials)")
     
     options = webdriver.ChromeOptions()
     
@@ -53,7 +57,7 @@ def get_link_with_headers():
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
 
-    # --- PROXY INJECTION (Sirf Selenium ke liye) ---
+    # --- PROXY INJECTION ---
     seleniumwire_options = {
         'proxy': {
             'http': PROXY_URL,
@@ -101,11 +105,14 @@ def get_link_with_headers():
                     }
                     print(f"\n🎉 [BINGO] .m3u8 Link Mil Gaya!")
                     print(f"   🔗 URL: {request.url[:80]}...")
+                    print(f"   🛡️ Referer: {data['referer']}")
+                    print(f"   🍪 Cookie Set: {'Yes' if data['cookie'] else 'No'}")
                     break
                     
         if not data:
             print("\n[🚨] WARNING: 5 seconds poore hone ke bawajood .m3u8 link nahi mila!")
             print(f"   -> Page Title: '{driver.title}'")
+            print("   -> 💡 Tip: Agar title 'Just a moment' hai toh Proxy WAF mein fail ho gayi. Agar title normal hai, toh 5 seconds player ke liye kam par gaye.")
 
     except Exception as e:
         print(f"\n[💥] PYTHON SCRIPT ERROR (Browser Crash):")
@@ -148,10 +155,7 @@ def start_stream(data):
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
-        
-        # ⚠️ MASTER HACK: FFmpeg ki proxy band kar di gayi hai! ⚠️
-        # Ab stream direct GitHub ke internet se download hogi
-        
+        "-http_proxy", PROXY_URL,  
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
@@ -160,12 +164,12 @@ def start_stream(data):
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
         "-f", "flv", RTMP_URL
     ]
-    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Direct GitHub Network par):")
+    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Errors honge toh neechay aayenge):")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
 
 def main():
     print("========================================")
-    print("   🚀 SMART SPLIT-ROUTING STREAMER")
+    print("   🚀 ULTRA-DEBUG GITHUB STREAMER")
     print("========================================")
     
     # ⚠️ STREAM KEY CHECKER ⚠️
@@ -175,7 +179,7 @@ def main():
         print("❌ Line Number 18 par ja kar asli key update karein.")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
         time.sleep(10)
-        return 
+        return # Code ko yahin rok do taake crash na ho
     
     end_time = time.time() + (6 * 60 * 60)
     current_process = None
@@ -191,7 +195,7 @@ def main():
                 print("\n[🚀] SUCCESS! Video feed OK.ru par send hona shuru ho gayi hai!")
                 
                 sleep_seconds = calculate_sleep_time(data['url'])
-                print(f"[zzz] FFmpeg direct data fetch kar raha hai (Proxy safe hai). Bot {int(sleep_seconds/60)} mins ke liye rest mode mein ja raha hai...")
+                print(f"[zzz] FFmpeg chal raha hai. Bot {int(sleep_seconds/60)} mins ke liye rest mode mein ja raha hai...")
                 
                 waited = 0
                 while waited < sleep_seconds:
@@ -200,7 +204,7 @@ def main():
                     if current_process.poll() is not None:
                         exit_code = current_process.poll()
                         print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
-                        print("[🔍] Reason: Shayad m3u8 link par IP-Lock hai aur direct download allowed nahi hai.")
+                        print("[🔍] Reason: Shayad m3u8 link expire ho gaya hai ya proxy ne connection tor diya hai.")
                         break 
                 
                 print("\n[🔄] Naya link dhoondne ka cycle dobara shuru ho raha hai...")
@@ -219,7 +223,18 @@ if __name__ == "__main__":
 
 
 
-# ===== temporary fix with proxy =========================
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # import os
