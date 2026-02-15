@@ -1,10 +1,11 @@
+
 name: 24/7 Cricket Streamer
 
 on:
   workflow_dispatch:
     inputs:
       target_url:
-        description: 'Target Video Link'
+        description: 'Target Video Link (Auto Mode)'
         required: true
         default: 'https://dadocric.st/player.php?id=willowextra'
       stream_key:
@@ -27,6 +28,19 @@ on:
         description: 'Proxy Password'
         required: true
         default: 'qhnyvm0qpf6p'
+      # --- NEW MANUAL FIELDS ---
+      manual_m3u8:
+        description: '(OPTIONAL) Direct m3u8 Link (Blank = Auto Bot)'
+        required: false
+        default: ''
+      manual_referer:
+        description: '(OPTIONAL) Referer for Direct Link'
+        required: false
+        default: ''
+      manual_origin:
+        description: '(OPTIONAL) Origin for Direct Link'
+        required: false
+        default: ''
 
 jobs:
   run-stream:
@@ -48,14 +62,223 @@ jobs:
 
     - name: Start The Bot with Virtual Screen
       env:
-        # ⚠️ YAHAN GITHUB INPUTS KO PYTHON VARIABLES MEIN BHEJA JA RAHA HAI ⚠️
         TARGET_URL: ${{ inputs.target_url }}
         STREAM_KEY: ${{ inputs.stream_key }}
         PROXY_IP: ${{ inputs.proxy_ip }}
         PROXY_PORT: ${{ inputs.proxy_port }}
         PROXY_USER: ${{ inputs.proxy_user }}
         PROXY_PASS: ${{ inputs.proxy_pass }}
+        MANUAL_M3U8: ${{ inputs.manual_m3u8 }}
+        MANUAL_REFERER: ${{ inputs.manual_referer }}
+        MANUAL_ORIGIN: ${{ inputs.manual_origin }}
       run: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python -u final_bot.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ============ 100% good =================================
+
+# name: 24/7 Cricket Streamer
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       target_url:
+#         description: 'Target Video Link'
+#         required: true
+#         default: 'https://dadocric.st/player.php?id=willowextra'
+#       stream_key:
+#         description: 'OK.ru Stream Key'
+#         required: true
+#         default: '11523921485458_10535073221266_x3wpukcvda'
+#       proxy_ip:
+#         description: 'Proxy IP Address'
+#         required: true
+#         default: '31.59.20.176'
+#       proxy_port:
+#         description: 'Proxy Port'
+#         required: true
+#         default: '6754'
+#       proxy_user:
+#         description: 'Proxy Username'
+#         required: true
+#         default: 'cjasfidu'
+#       proxy_pass:
+#         description: 'Proxy Password'
+#         required: true
+#         default: 'qhnyvm0qpf6p'
+
+# jobs:
+#   run-stream:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 360 # 6 Hours Limit
+
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v3
+
+#     - name: Install System Tools & Fake Screen (Xvfb)
+#       run: |
+#         sudo apt-get update
+#         sudo apt-get install -y ffmpeg google-chrome-stable xvfb
+
+#     - name: Install Python Requirements
+#       run: |
+#         pip install selenium selenium-wire webdriver-manager blinker==1.7.0 "setuptools<70"
+
+#     - name: Start The Bot with Virtual Screen
+#       env:
+#         # ⚠️ YAHAN GITHUB INPUTS KO PYTHON VARIABLES MEIN BHEJA JA RAHA HAI ⚠️
+#         TARGET_URL: $ {{ inputs.target_url }}
+#         STREAM_KEY: $ {{ inputs.stream_key }}
+#         PROXY_IP: $ {{ inputs.proxy_ip }}
+#         PROXY_PORT: $ {{ inputs.proxy_port }}
+#         PROXY_USER: $ {{ inputs.proxy_user }}
+#         PROXY_PASS: $ {{ inputs.proxy_pass }}
+#       run: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python -u final_bot.py
 
 
 
@@ -145,7 +368,7 @@ jobs:
 
 
 
-# =============== correct =============================
+# ===============  100% correct =============================
 
 
 # name: 24/7 Cricket Streamer
