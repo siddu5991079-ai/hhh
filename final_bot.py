@@ -58,7 +58,7 @@ def get_link_with_headers():
                         "url": request.url,
                         "ua": headers.get('User-Agent', ''),
                         "cookie": headers.get('Cookie', ''),
-                        "referer": headers.get('Referer', 'https://crichdbest.com/')
+                        "referer": headers.get('Referer', 'https://pipcast.cc/')
                     }
                     print(f"[✅] Link Found: {request.url[:40]}...")
                     break
