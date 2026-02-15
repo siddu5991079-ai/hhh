@@ -1,4 +1,3 @@
-
 import os
 import time
 import subprocess
@@ -25,7 +24,7 @@ PROXY_USER = os.environ.get('PROXY_USER', 'cjasfidu')
 PROXY_PASS = os.environ.get('PROXY_PASS', 'qhnyvm0qpf6p')
 PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
 
-# --- NAYA: MANUAL MODE INPUTS ---
+# --- MANUAL MODE INPUTS ---
 MANUAL_M3U8 = os.environ.get('MANUAL_M3U8', '').strip()
 MANUAL_REFERER = os.environ.get('MANUAL_REFERER', '').strip()
 MANUAL_ORIGIN = os.environ.get('MANUAL_ORIGIN', '').strip()
@@ -62,20 +61,19 @@ def get_link_with_headers():
     data = None
 
     try:
-        print(f"[⚙️] [STEP 3] Chrome Browser start ho raha hai Proxy ke sath...")
+        print(f"[⚙️] [STEP 3] Chrome Browser start ho raha hai...")
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), seleniumwire_options=seleniumwire_options, options=options)
         
-        print(f"[🕵️‍♂️] [STEP 4] Anti-Bot JS Scripts inject ho rahi hain...")
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
         print(f"[🌐] [STEP 5] Website open kar raha hoon: {TARGET_WEBSITE}")
         driver.get(TARGET_WEBSITE)
         
-        print("[⏳] [STEP 6] Website load ho gayi! 5 Seconds ka wait start ho gaya hai...") 
+        print("[⏳] [STEP 6] Website load ho gayi! 5 Seconds wait start...") 
         for i in range(5, 0, -1):
             time.sleep(1)
             
-        print("[✅] [STEP 7] 5 Seconds poore! Ab network requests scan kar raha hoon...")
+        print("[✅] [STEP 7] Scanning network requests...")
 
         for request in driver.requests:
             if request.response:
@@ -86,22 +84,19 @@ def get_link_with_headers():
                         "ua": headers.get('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'),
                         "cookie": headers.get('Cookie', ''),
                         "referer": headers.get('Referer', TARGET_WEBSITE),
-                        "origin": "" # Auto mode mein Origin blank rakhte hain
+                        "origin": ""
                     }
-                    print(f"\n🎉 [BINGO] .m3u8 Link Mil Gaya!")
+                    print(f"\n🎉 [BINGO] .m3u8 Link Mil Gaya: {request.url[:60]}...")
                     break
                     
         if not data:
-            print("\n[🚨] WARNING: 5 seconds poore hone ke bawajood .m3u8 link nahi mila!")
-            print(f"   -> Page Title: '{driver.title}'")
-
+            print("\n[🚨] WARNING: .m3u8 link nahi mila!")
+            
     except Exception as e:
         print(f"\n[💥] PYTHON SCRIPT ERROR (Browser Crash):")
         print(traceback.format_exc())
     finally:
-        if driver: 
-            print("[🧹] [STEP 8] Chrome Browser band kiya ja raha hai...")
-            driver.quit()
+        if driver: driver.quit()
     
     return data
 
@@ -130,12 +125,10 @@ def calculate_sleep_time(url):
     return DEFAULT_SLEEP
 
 def start_stream(data):
-    # NAYA: Origin Header ka hisaab lagaya gaya hai
     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
     if data.get('origin'):
         headers_cmd += f"\r\nOrigin: {data['origin']}"
     
-    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
@@ -147,69 +140,82 @@ def start_stream(data):
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
         "-f", "flv", RTMP_URL
     ]
-    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Direct GitHub Network par):")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
 
 def main():
     print("========================================")
-    print("   🚀 HYBRID STREAMER (MANUAL + AUTO)")
+    print("   🚀 ZERO-DOWNTIME HYBRID STREAMER")
     print("========================================")
     
     end_time = time.time() + (6 * 60 * 60)
     current_process = None
 
-    # --- DUAL MODE CHECKER ---
+    # --- DUAL MODE SETTINGS ---
     is_manual_mode = bool(MANUAL_M3U8)
     if is_manual_mode:
         print("\n[🎯] ⚡ MANUAL OVERRIDE ACTIVATED ⚡")
-        print("Bot ab link dhoondne ke bajaye seedha aapka diya hua link chalayega!")
-        manual_data = {
+        data = {
             "url": MANUAL_M3U8,
             "referer": MANUAL_REFERER,
             "origin": MANUAL_ORIGIN,
             "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
             "cookie": ""
         }
+    else:
+        data = get_link_with_headers()
 
     while time.time() < end_time:
         try:
-            # Mode ke hisaab se data set karo
-            if is_manual_mode:
-                data = manual_data
-            else:
+            if not data:
+                print("\n[🔄] Naya link dhoondne ka cycle shuru ho raha hai...")
                 data = get_link_with_headers()
+                if not data:
+                    print("\n[❌] Link nahi mila. 1 minute baad dobara koshish hogi...")
+                    time.sleep(60)
+                    continue
+
+            # Stream yahan start hoti hai
+            if current_process: current_process.terminate()
+            current_process = start_stream(data)
+            print("\n[🚀] SUCCESS! Video feed OK.ru par live hai!")
             
-            if data:
-                if current_process: current_process.terminate()
-                
-                current_process = start_stream(data)
-                print("\n[🚀] SUCCESS! Video feed OK.ru par send hona shuru ho gayi hai!")
-                
-                if is_manual_mode:
-                    print("[zzz] MANUAL MODE: Bot 10 ghante ke liye so raha hai. Expire hone par wapis yahi link retry karega.")
-                    sleep_seconds = 10 * 60 * 60 # Manual mode mein expiry check nahi hoti
-                else:
-                    sleep_seconds = calculate_sleep_time(data['url'])
-                    print(f"[zzz] AUTO MODE: Bot {int(sleep_seconds/60)} mins ke liye rest mode mein ja raha hai...")
-                
-                waited = 0
-                while waited < sleep_seconds:
-                    time.sleep(10)
-                    waited += 10
-                    if current_process.poll() is not None:
-                        exit_code = current_process.poll()
-                        print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
-                        if is_manual_mode:
-                            print("[🔄] MANUAL MODE: Watchman ne bahar nikala hai, lekin main dobara issi ticket (link) par andar ja raha hoon...")
-                        break 
-                
-                if not is_manual_mode:
-                    print("\n[🔄] AUTO MODE: Naya link dhoondne ka cycle dobara shuru ho raha hai...")
-                if current_process: current_process.terminate()
+            if is_manual_mode:
+                sleep_seconds = 10 * 60 * 60
             else:
-                print("\n[❌] Link dhoondne ka process fail ho gaya. 1 minute baad dobara koshish hogi...")
-                time.sleep(60)
+                sleep_seconds = calculate_sleep_time(data['url'])
+            
+            waited = 0
+            crashed = False
+            while waited < sleep_seconds:
+                time.sleep(10)
+                waited += 10
+                if current_process.poll() is not None:
+                    exit_code = current_process.poll()
+                    print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
+                    crashed = True
+                    break 
+            
+            # ====================================================
+            # 🔥 ZERO-DOWNTIME PRE-FETCH LOGIC (The Magic Hack)
+            # ====================================================
+            if not is_manual_mode and not crashed:
+                print("\n[🕵️‍♂️] PRE-FETCH MODE: Viewers ko stream nazar aa rahi hai. Background mein naya link laa raha hoon...")
                 
+                # Yeh function 20 seconds lega, lekin is doran FFmpeg purane link par video chala raha hoga!
+                new_data = get_link_with_headers()
+                
+                if new_data:
+                    print("\n[⚡] NAYA LINK READY! Millisecond Swap kar raha hoon (Zero Downtime)...")
+                    data = new_data 
+                    # Loop ghoom kar wapis upar jayega, purani stream band hogi aur 0.1s mein nayi start ho jayegi!
+                else:
+                    print("\n[⚠️] Pre-fetch fail! Purani stream ko natural crash hone tak chalne do...")
+                    current_process.wait() # Jab tak link zinda hai chalne do
+                    data = None # Phir shuru se dhoondega
+            
+            elif crashed and not is_manual_mode:
+                data = None # Crash ho gaya toh naya link laayega
+
         except Exception:
             print(f"\n[💥] MAIN LOOP ERROR:")
             print(traceback.format_exc())
@@ -217,6 +223,234 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+# ======= 1
+
+
+# import os
+# import time
+# import subprocess
+# import urllib.parse
+# import traceback
+# from datetime import datetime, timezone, timedelta
+# from seleniumwire import webdriver
+# from selenium.webdriver.chrome.service import Service
+# from webdriver_manager.chrome import ChromeDriverManager
+# from selenium.webdriver.chrome.options import Options
+
+# # ==========================================
+# # ⚙️ MAIN SETTINGS (DYNAMIC FROM GITHUB)
+# # ==========================================
+# DEFAULT_URL = "https://dadocric.st/player.php?id=willowextra"
+# TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
+
+# STREAM_KEY = os.environ.get('STREAM_KEY', '11523921485458_10535073221266_x3wpukcvda')
+# RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
+
+# PROXY_IP = os.environ.get('PROXY_IP', '31.59.20.176')
+# PROXY_PORT = os.environ.get('PROXY_PORT', '6754')
+# PROXY_USER = os.environ.get('PROXY_USER', 'cjasfidu')
+# PROXY_PASS = os.environ.get('PROXY_PASS', 'qhnyvm0qpf6p')
+# PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
+
+# # --- NAYA: MANUAL MODE INPUTS ---
+# MANUAL_M3U8 = os.environ.get('MANUAL_M3U8', '').strip()
+# MANUAL_REFERER = os.environ.get('MANUAL_REFERER', '').strip()
+# MANUAL_ORIGIN = os.environ.get('MANUAL_ORIGIN', '').strip()
+
+# DEFAULT_SLEEP = 45 * 60 
+# PKT = timezone(timedelta(hours=5))
+# # ==========================================
+
+# def get_link_with_headers():
+#     print(f"\n========================================")
+#     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
+#     print(f"[🔍] [STEP 2] Proxy Set for Link Fetching: {PROXY_URL.split('@')[-1]}")
+    
+#     options = webdriver.ChromeOptions()
+#     options.add_argument('--no-sandbox')
+#     options.add_argument('--disable-dev-shm-usage')
+#     options.add_argument('--disable-gpu')
+#     options.add_argument('--window-size=1920,1080')
+#     options.add_argument('--autoplay-policy=no-user-gesture-required')
+#     options.add_argument('--mute-audio')
+#     options.set_capability('goog:loggingPrefs', {'browser': 'ALL'})
+#     options.add_argument('--disable-blink-features=AutomationControlled')
+#     options.add_experimental_option("excludeSwitches", ["enable-automation"])
+#     options.add_experimental_option('useAutomationExtension', False)
+#     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
+
+#     seleniumwire_options = {
+#         'proxy': {'http': PROXY_URL, 'https': PROXY_URL, 'no_proxy': 'localhost,127.0.0.1'},
+#         'disable_encoding': True, 
+#         'connection_keep_alive': True
+#     }
+
+#     driver = None
+#     data = None
+
+#     try:
+#         print(f"[⚙️] [STEP 3] Chrome Browser start ho raha hai Proxy ke sath...")
+#         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), seleniumwire_options=seleniumwire_options, options=options)
+        
+#         print(f"[🕵️‍♂️] [STEP 4] Anti-Bot JS Scripts inject ho rahi hain...")
+#         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+#         print(f"[🌐] [STEP 5] Website open kar raha hoon: {TARGET_WEBSITE}")
+#         driver.get(TARGET_WEBSITE)
+        
+#         print("[⏳] [STEP 6] Website load ho gayi! 5 Seconds ka wait start ho gaya hai...") 
+#         for i in range(5, 0, -1):
+#             time.sleep(1)
+            
+#         print("[✅] [STEP 7] 5 Seconds poore! Ab network requests scan kar raha hoon...")
+
+#         for request in driver.requests:
+#             if request.response:
+#                 if ".m3u8" in request.url:
+#                     headers = request.headers
+#                     data = {
+#                         "url": request.url,
+#                         "ua": headers.get('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'),
+#                         "cookie": headers.get('Cookie', ''),
+#                         "referer": headers.get('Referer', TARGET_WEBSITE),
+#                         "origin": "" # Auto mode mein Origin blank rakhte hain
+#                     }
+#                     print(f"\n🎉 [BINGO] .m3u8 Link Mil Gaya!")
+#                     break
+                    
+#         if not data:
+#             print("\n[🚨] WARNING: 5 seconds poore hone ke bawajood .m3u8 link nahi mila!")
+#             print(f"   -> Page Title: '{driver.title}'")
+
+#     except Exception as e:
+#         print(f"\n[💥] PYTHON SCRIPT ERROR (Browser Crash):")
+#         print(traceback.format_exc())
+#     finally:
+#         if driver: 
+#             print("[🧹] [STEP 8] Chrome Browser band kiya ja raha hai...")
+#             driver.quit()
+    
+#     return data
+
+# def calculate_sleep_time(url):
+#     try:
+#         parsed = urllib.parse.urlparse(url)
+#         params = urllib.parse.parse_qs(parsed.query)
+#         expiry_ts = None
+        
+#         if 'expires' in params: expiry_ts = int(params['expires'][0])
+#         elif 'e' in params: expiry_ts = int(params['e'][0])
+            
+#         if expiry_ts:
+#             expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
+#             wake_up_dt = expiry_dt - timedelta(minutes=5)
+#             now_dt = datetime.now(PKT)
+#             seconds = (wake_up_dt - now_dt).total_seconds()
+            
+#             print(f"[⏰] Link Expiry Time: {expiry_dt.strftime('%I:%M %p')}")
+            
+#             if seconds > 0: return seconds
+#             else: return 60
+#     except Exception:
+#         pass
+    
+#     return DEFAULT_SLEEP
+
+# def start_stream(data):
+#     # NAYA: Origin Header ka hisaab lagaya gaya hai
+#     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
+#     if data.get('origin'):
+#         headers_cmd += f"\r\nOrigin: {data['origin']}"
+    
+#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
+#     cmd = [
+#         "ffmpeg", "-re",
+#         "-loglevel", "error", 
+#         "-headers", headers_cmd,
+#         "-i", data['url'],
+#         "-c:v", "libx264", "-preset", "ultrafast",
+#         "-b:v", "600k", "-maxrate", "800k", "-bufsize", "1200k",
+#         "-vf", "scale=854:480", "-r", "25",
+#         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
+#         "-f", "flv", RTMP_URL
+#     ]
+#     print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Direct GitHub Network par):")
+#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
+
+# def main():
+#     print("========================================")
+#     print("   🚀 HYBRID STREAMER (MANUAL + AUTO)")
+#     print("========================================")
+    
+#     end_time = time.time() + (6 * 60 * 60)
+#     current_process = None
+
+#     # --- DUAL MODE CHECKER ---
+#     is_manual_mode = bool(MANUAL_M3U8)
+#     if is_manual_mode:
+#         print("\n[🎯] ⚡ MANUAL OVERRIDE ACTIVATED ⚡")
+#         print("Bot ab link dhoondne ke bajaye seedha aapka diya hua link chalayega!")
+#         manual_data = {
+#             "url": MANUAL_M3U8,
+#             "referer": MANUAL_REFERER,
+#             "origin": MANUAL_ORIGIN,
+#             "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+#             "cookie": ""
+#         }
+
+#     while time.time() < end_time:
+#         try:
+#             # Mode ke hisaab se data set karo
+#             if is_manual_mode:
+#                 data = manual_data
+#             else:
+#                 data = get_link_with_headers()
+            
+#             if data:
+#                 if current_process: current_process.terminate()
+                
+#                 current_process = start_stream(data)
+#                 print("\n[🚀] SUCCESS! Video feed OK.ru par send hona shuru ho gayi hai!")
+                
+#                 if is_manual_mode:
+#                     print("[zzz] MANUAL MODE: Bot 10 ghante ke liye so raha hai. Expire hone par wapis yahi link retry karega.")
+#                     sleep_seconds = 10 * 60 * 60 # Manual mode mein expiry check nahi hoti
+#                 else:
+#                     sleep_seconds = calculate_sleep_time(data['url'])
+#                     print(f"[zzz] AUTO MODE: Bot {int(sleep_seconds/60)} mins ke liye rest mode mein ja raha hai...")
+                
+#                 waited = 0
+#                 while waited < sleep_seconds:
+#                     time.sleep(10)
+#                     waited += 10
+#                     if current_process.poll() is not None:
+#                         exit_code = current_process.poll()
+#                         print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
+#                         if is_manual_mode:
+#                             print("[🔄] MANUAL MODE: Watchman ne bahar nikala hai, lekin main dobara issi ticket (link) par andar ja raha hoon...")
+#                         break 
+                
+#                 if not is_manual_mode:
+#                     print("\n[🔄] AUTO MODE: Naya link dhoondne ka cycle dobara shuru ho raha hai...")
+#                 if current_process: current_process.terminate()
+#             else:
+#                 print("\n[❌] Link dhoondne ka process fail ho gaya. 1 minute baad dobara koshish hogi...")
+#                 time.sleep(60)
+                
+#         except Exception:
+#             print(f"\n[💥] MAIN LOOP ERROR:")
+#             print(traceback.format_exc())
+#             time.sleep(60)
+
+# if __name__ == "__main__":
+#     main()
 
 
 
