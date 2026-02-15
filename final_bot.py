@@ -100,6 +100,34 @@ def get_link_with_headers():
     
     return data
 
+# =============================================
+
+# def calculate_sleep_time(url):
+#     try:
+#         parsed = urllib.parse.urlparse(url)
+#         params = urllib.parse.parse_qs(parsed.query)
+#         expiry_ts = None
+        
+#         if 'expires' in params: expiry_ts = int(params['expires'][0])
+#         elif 'e' in params: expiry_ts = int(params['e'][0])
+            
+#         if expiry_ts:
+#             expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
+#             wake_up_dt = expiry_dt - timedelta(minutes=5)
+#             now_dt = datetime.now(PKT)
+#             seconds = (wake_up_dt - now_dt).total_seconds()
+            
+#             print(f"[⏰] Link Expiry Time: {expiry_dt.strftime('%I:%M %p')}")
+            
+#             if seconds > 0: return seconds
+#             else: return 60
+#     except Exception:
+#         pass
+    
+#     return DEFAULT_SLEEP
+
+
+
 def calculate_sleep_time(url):
     try:
         parsed = urllib.parse.urlparse(url)
@@ -111,18 +139,25 @@ def calculate_sleep_time(url):
             
         if expiry_ts:
             expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
+            
+            # 🔥 TEST MODE: 5 minute ki bajaye 73 minutes pehle utha rahe hain!
             wake_up_dt = expiry_dt - timedelta(minutes=73)
+            
             now_dt = datetime.now(PKT)
             seconds = (wake_up_dt - now_dt).total_seconds()
             
-            print(f"[⏰] Link Expiry Time: {expiry_dt.strftime('%I:%M %p')}")
+            print(f"[⏰] Asli Link Expiry Time: {expiry_dt.strftime('%I:%M %p')}")
+            print(f"[🛠️] TEST MODE: Bot {wake_up_dt.strftime('%I:%M %p')} par uth kar naya link layega.")
             
             if seconds > 0: return seconds
-            else: return 60
+            else: return 60 # Agar time pehle hi guzar chuka ho toh 60 sec baad uthega
     except Exception:
         pass
     
     return DEFAULT_SLEEP
+
+
+# ====================================================
 
 def start_stream(data):
     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
