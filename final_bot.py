@@ -1,8 +1,3 @@
-
-
-
-# ===== temporary fix with proxy =========================
-
 import os
 import time
 import subprocess
@@ -21,12 +16,14 @@ DEFAULT_URL = "https://dadocric.st/player.php?id=willowextra"
 TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
 
 # 1️⃣ APNI FRESH OK.RU STREAM KEY YAHAN DALEIN
-STREAM_KEY = "NAYI_STREAM_KEY_YAHAN_DALEIN" 
+# STREAM_KEY = "NAYI_STREAM_KEY_YAHAN_DALEIN"
+STREAM_KEY = "11523921485458_10535073221266_x3wpukcvda"  # <-- NAYA: OK.ru Stream Key
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
 
 # 2️⃣ APNI WEBSHARE PROXY YAHAN DALEIN 
-# Format: "http://username:password@ip_address:port"
-PROXY_URL = "http://shafi_user:pass1234@185.199.229.156:80"
+# Yeh sirf link fetch karne (KB's) mein use hogi
+# PROXY_URL = "http://shafi_user:pass1234@185.199.229.156:80"
+PROXY_URL = "http://cjasfidu:qhnyvm0qpf6p@31.59.20.176:6754"  # <-- NAYA: Proxy URL for Selenium (Link Fetching Only)
 
 DEFAULT_SLEEP = 45 * 60 
 PKT = timezone(timedelta(hours=5))
@@ -35,7 +32,7 @@ PKT = timezone(timedelta(hours=5))
 def get_link_with_headers():
     print(f"\n========================================")
     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
-    print(f"[🔍] [STEP 2] Proxy Set: {PROXY_URL.split('@')[-1]} (Hiding credentials)")
+    print(f"[🔍] [STEP 2] Proxy Set for Link Fetching: {PROXY_URL.split('@')[-1]}")
     
     options = webdriver.ChromeOptions()
     
@@ -57,7 +54,7 @@ def get_link_with_headers():
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
 
-    # --- PROXY INJECTION ---
+    # --- PROXY INJECTION (Sirf Selenium ke liye) ---
     seleniumwire_options = {
         'proxy': {
             'http': PROXY_URL,
@@ -105,14 +102,11 @@ def get_link_with_headers():
                     }
                     print(f"\n🎉 [BINGO] .m3u8 Link Mil Gaya!")
                     print(f"   🔗 URL: {request.url[:80]}...")
-                    print(f"   🛡️ Referer: {data['referer']}")
-                    print(f"   🍪 Cookie Set: {'Yes' if data['cookie'] else 'No'}")
                     break
                     
         if not data:
             print("\n[🚨] WARNING: 5 seconds poore hone ke bawajood .m3u8 link nahi mila!")
             print(f"   -> Page Title: '{driver.title}'")
-            print("   -> 💡 Tip: Agar title 'Just a moment' hai toh Proxy WAF mein fail ho gayi. Agar title normal hai, toh 5 seconds player ke liye kam par gaye.")
 
     except Exception as e:
         print(f"\n[💥] PYTHON SCRIPT ERROR (Browser Crash):")
@@ -155,7 +149,10 @@ def start_stream(data):
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
-        "-http_proxy", PROXY_URL,  
+        
+        # ⚠️ MASTER HACK: FFmpeg ki proxy band kar di gayi hai! ⚠️
+        # Ab stream direct GitHub ke internet se download hogi
+        
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
@@ -164,12 +161,12 @@ def start_stream(data):
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
         "-f", "flv", RTMP_URL
     ]
-    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Errors honge toh neechay aayenge):")
+    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Direct GitHub Network par):")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
 
 def main():
     print("========================================")
-    print("   🚀 ULTRA-DEBUG GITHUB STREAMER")
+    print("   🚀 SMART SPLIT-ROUTING STREAMER")
     print("========================================")
     
     # ⚠️ STREAM KEY CHECKER ⚠️
@@ -179,7 +176,7 @@ def main():
         print("❌ Line Number 18 par ja kar asli key update karein.")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
         time.sleep(10)
-        return # Code ko yahin rok do taake crash na ho
+        return 
     
     end_time = time.time() + (6 * 60 * 60)
     current_process = None
@@ -195,7 +192,7 @@ def main():
                 print("\n[🚀] SUCCESS! Video feed OK.ru par send hona shuru ho gayi hai!")
                 
                 sleep_seconds = calculate_sleep_time(data['url'])
-                print(f"[zzz] FFmpeg chal raha hai. Bot {int(sleep_seconds/60)} mins ke liye rest mode mein ja raha hai...")
+                print(f"[zzz] FFmpeg direct data fetch kar raha hai (Proxy safe hai). Bot {int(sleep_seconds/60)} mins ke liye rest mode mein ja raha hai...")
                 
                 waited = 0
                 while waited < sleep_seconds:
@@ -204,7 +201,7 @@ def main():
                     if current_process.poll() is not None:
                         exit_code = current_process.poll()
                         print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
-                        print("[🔍] Reason: Shayad m3u8 link expire ho gaya hai ya proxy ne connection tor diya hai.")
+                        print("[🔍] Reason: Shayad m3u8 link par IP-Lock hai aur direct download allowed nahi hai.")
                         break 
                 
                 print("\n[🔄] Naya link dhoondne ka cycle dobara shuru ho raha hai...")
@@ -220,6 +217,232 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+# ===== temporary fix with proxy =========================
+
+# import os
+# import time
+# import subprocess
+# import urllib.parse
+# import traceback
+# from datetime import datetime, timezone, timedelta
+# from seleniumwire import webdriver
+# from selenium.webdriver.chrome.service import Service
+# from webdriver_manager.chrome import ChromeDriverManager
+# from selenium.webdriver.chrome.options import Options
+
+# # ==========================================
+# # ⚙️ MAIN SETTINGS (YAHAN APNI DETAILS DALEIN)
+# # ==========================================
+# DEFAULT_URL = "https://dadocric.st/player.php?id=willowextra"
+# TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
+
+# # 1️⃣ APNI FRESH OK.RU STREAM KEY YAHAN DALEIN
+# # STREAM_KEY = "NAYI_STREAM_KEY_YAHAN_DALEIN"
+# STREAM_KEY = "11523921485458_10535073221266_x3wpukcvda"  # <-- NAYA: OK.ru Stream Key
+# RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
+
+# # 2️⃣ APNI WEBSHARE PROXY YAHAN DALEIN 
+# # Format: "http://username:password@ip_address:port"
+# # PROXY_URL = "http://shafi_user:pass1234@185.199.229.156:80"
+# PROXY_URL = "http://cjasfidu:qhnyvm0qpf6p@185.199.229.156:80"  # <-- NAYA: Proxy URL for Selenium and FFmpeg
+
+# DEFAULT_SLEEP = 45 * 60 
+# PKT = timezone(timedelta(hours=5))
+# # ==========================================
+
+# def get_link_with_headers():
+#     print(f"\n========================================")
+#     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
+#     print(f"[🔍] [STEP 2] Proxy Set: {PROXY_URL.split('@')[-1]} (Hiding credentials)")
+    
+#     options = webdriver.ChromeOptions()
+    
+#     # --- GITHUB ACTIONS DISPLAY SETTINGS ---
+#     options.add_argument('--no-sandbox')
+#     options.add_argument('--disable-dev-shm-usage')
+#     options.add_argument('--disable-gpu')
+#     options.add_argument('--window-size=1920,1080')
+    
+#     # --- VIDEO AUTOPLAY FIX ---
+#     options.add_argument('--autoplay-policy=no-user-gesture-required')
+#     options.add_argument('--mute-audio')
+    
+#     options.set_capability('goog:loggingPrefs', {'browser': 'ALL'})
+    
+#     # --- ANTI-BOT BYPASS ---
+#     options.add_argument('--disable-blink-features=AutomationControlled')
+#     options.add_experimental_option("excludeSwitches", ["enable-automation"])
+#     options.add_experimental_option('useAutomationExtension', False)
+#     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
+
+#     # --- PROXY INJECTION ---
+#     seleniumwire_options = {
+#         'proxy': {
+#             'http': PROXY_URL,
+#             'https': PROXY_URL,
+#             'no_proxy': 'localhost,127.0.0.1'
+#         },
+#         'disable_encoding': True, 
+#         'connection_keep_alive': True
+#     }
+
+#     driver = None
+#     data = None
+
+#     try:
+#         print(f"[⚙️] [STEP 3] Chrome Browser start ho raha hai Proxy ke sath...")
+#         driver = webdriver.Chrome(
+#             service=Service(ChromeDriverManager().install()),
+#             seleniumwire_options=seleniumwire_options,
+#             options=options
+#         )
+        
+#         print(f"[🕵️‍♂️] [STEP 4] Anti-Bot JS Scripts inject ho rahi hain...")
+#         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+#         print(f"[🌐] [STEP 5] Website open kar raha hoon: {TARGET_WEBSITE}")
+#         driver.get(TARGET_WEBSITE)
+        
+#         # ⏳ STRICT 5 SECONDS WAIT
+#         print("[⏳] [STEP 6] Website load ho gayi! 5 Seconds ka wait start ho gaya hai...") 
+#         for i in range(5, 0, -1):
+#             print(f"      ⏳ Wait: {i} seconds baqi...")
+#             time.sleep(1)
+            
+#         print("[✅] [STEP 7] 5 Seconds poore! Ab network requests scan kar raha hoon...")
+
+#         for request in driver.requests:
+#             if request.response:
+#                 if ".m3u8" in request.url:
+#                     headers = request.headers
+#                     data = {
+#                         "url": request.url,
+#                         "ua": headers.get('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'),
+#                         "cookie": headers.get('Cookie', ''),
+#                         "referer": headers.get('Referer', TARGET_WEBSITE) 
+#                     }
+#                     print(f"\n🎉 [BINGO] .m3u8 Link Mil Gaya!")
+#                     print(f"   🔗 URL: {request.url[:80]}...")
+#                     print(f"   🛡️ Referer: {data['referer']}")
+#                     print(f"   🍪 Cookie Set: {'Yes' if data['cookie'] else 'No'}")
+#                     break
+                    
+#         if not data:
+#             print("\n[🚨] WARNING: 5 seconds poore hone ke bawajood .m3u8 link nahi mila!")
+#             print(f"   -> Page Title: '{driver.title}'")
+#             print("   -> 💡 Tip: Agar title 'Just a moment' hai toh Proxy WAF mein fail ho gayi. Agar title normal hai, toh 5 seconds player ke liye kam par gaye.")
+
+#     except Exception as e:
+#         print(f"\n[💥] PYTHON SCRIPT ERROR (Browser Crash):")
+#         print(traceback.format_exc())
+#     finally:
+#         if driver: 
+#             print("[🧹] [STEP 8] Chrome Browser band kiya ja raha hai...")
+#             driver.quit()
+    
+#     return data
+
+# def calculate_sleep_time(url):
+#     try:
+#         parsed = urllib.parse.urlparse(url)
+#         params = urllib.parse.parse_qs(parsed.query)
+#         expiry_ts = None
+        
+#         if 'expires' in params: expiry_ts = int(params['expires'][0])
+#         elif 'e' in params: expiry_ts = int(params['e'][0])
+            
+#         if expiry_ts:
+#             expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
+#             wake_up_dt = expiry_dt - timedelta(minutes=5)
+#             now_dt = datetime.now(PKT)
+#             seconds = (wake_up_dt - now_dt).total_seconds()
+            
+#             print(f"[⏰] Link Expiry Time: {expiry_dt.strftime('%I:%M %p')}")
+            
+#             if seconds > 0: return seconds
+#             else: return 60
+#     except Exception:
+#         pass
+    
+#     return DEFAULT_SLEEP
+
+# def start_stream(data):
+#     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
+    
+#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
+#     cmd = [
+#         "ffmpeg", "-re",
+#         "-loglevel", "error", 
+#         "-http_proxy", PROXY_URL,  
+#         "-headers", headers_cmd,
+#         "-i", data['url'],
+#         "-c:v", "libx264", "-preset", "ultrafast",
+#         "-b:v", "600k", "-maxrate", "800k", "-bufsize", "1200k",
+#         "-vf", "scale=854:480", "-r", "25",
+#         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
+#         "-f", "flv", RTMP_URL
+#     ]
+#     print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Errors honge toh neechay aayenge):")
+#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
+
+# def main():
+#     print("========================================")
+#     print("   🚀 ULTRA-DEBUG GITHUB STREAMER")
+#     print("========================================")
+    
+#     # ⚠️ STREAM KEY CHECKER ⚠️
+#     if "NAYI_STREAM_KEY" in STREAM_KEY:
+#         print("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+#         print("❌ ERROR: Aapne abhi tak OK.ru ki nayi Stream Key nahi dali!")
+#         print("❌ Line Number 18 par ja kar asli key update karein.")
+#         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
+#         time.sleep(10)
+#         return # Code ko yahin rok do taake crash na ho
+    
+#     end_time = time.time() + (6 * 60 * 60)
+#     current_process = None
+
+#     while time.time() < end_time:
+#         try:
+#             data = get_link_with_headers()
+            
+#             if data:
+#                 if current_process: current_process.terminate()
+                
+#                 current_process = start_stream(data)
+#                 print("\n[🚀] SUCCESS! Video feed OK.ru par send hona shuru ho gayi hai!")
+                
+#                 sleep_seconds = calculate_sleep_time(data['url'])
+#                 print(f"[zzz] FFmpeg chal raha hai. Bot {int(sleep_seconds/60)} mins ke liye rest mode mein ja raha hai...")
+                
+#                 waited = 0
+#                 while waited < sleep_seconds:
+#                     time.sleep(10)
+#                     waited += 10
+#                     if current_process.poll() is not None:
+#                         exit_code = current_process.poll()
+#                         print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
+#                         print("[🔍] Reason: Shayad m3u8 link expire ho gaya hai ya proxy ne connection tor diya hai.")
+#                         break 
+                
+#                 print("\n[🔄] Naya link dhoondne ka cycle dobara shuru ho raha hai...")
+#                 if current_process: current_process.terminate()
+#             else:
+#                 print("\n[❌] Link dhoondne ka process fail ho gaya. 1 minute baad dobara koshish hogi...")
+#                 time.sleep(60)
+                
+#         except Exception:
+#             print(f"\n[💥] MAIN LOOP ERROR:")
+#             print(traceback.format_exc())
+#             time.sleep(60)
+
+# if __name__ == "__main__":
+#     main()
 
 
 
