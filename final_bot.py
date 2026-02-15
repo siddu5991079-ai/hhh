@@ -2,7 +2,7 @@ import os
 import time
 import subprocess
 import urllib.parse
-import traceback  # <-- NAYA: Deep error reporting ke liye
+import traceback
 from datetime import datetime, timezone, timedelta
 from seleniumwire import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -34,7 +34,11 @@ def get_link_with_headers():
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
     
-    # Enable Browser Console Logging (Taake andha na rahay bot)
+    # --- VIDEO AUTOPLAY FIX (Taake player khud chal pare) ---
+    options.add_argument('--autoplay-policy=no-user-gesture-required')
+    options.add_argument('--mute-audio')
+    
+    # Enable Browser Console Logging (Taake debugging asaan ho)
     options.set_capability('goog:loggingPrefs', {'browser': 'ALL'})
     
     # --- ANTI-BOT BYPASS ---
@@ -60,9 +64,9 @@ def get_link_with_headers():
         
         driver.get(TARGET_WEBSITE)
         
-        # Wait time set to 5 seconds as requested
-        print("[⏳] Page loading (5 sec)...") 
-        time.sleep(5) 
+        # ⏳ 15 seconds ka time taake ads skip hon aur player m3u8 fetch kare
+        print("[⏳] Page loading & Player Autoplay (15 sec)...") 
+        time.sleep(15) 
 
         for request in driver.requests:
             if request.response:
@@ -88,7 +92,7 @@ def get_link_with_headers():
             if "Just a moment" in driver.title or "Cloudflare" in driver.title or "Access Denied" in driver.title:
                 print("   -> 🛑 WAF/CLOUDFLARE BLOCK: Website ne bot detect kar liya hai!")
             else:
-                print("   -> 🔎 Check: Shayad 5 seconds wait time bohot kam hai is player ke liye.")
+                print("   -> 🔎 Check: Shayad 15 seconds wait time bhi player ke liye kam raha.")
             
             # Print Javascript Console Errors
             print("   -> 📜 Browser Console Logs:")
@@ -144,7 +148,7 @@ def start_stream(data):
     
     cmd = [
         "ffmpeg", "-re",
-        "-loglevel", "error", # <-- NAYA: FFmpeg sirf critical errors print karega
+        "-loglevel", "error", # FFmpeg sirf critical errors print karega
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
@@ -155,7 +159,6 @@ def start_stream(data):
     ]
     print("\n[⚙️] FFmpeg Streaming Engine Started...")
     
-    # NAYA: stderr ko hide karne ke bajaye open rakha hai taake errors print hon
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
 
 def main():
@@ -203,7 +206,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
