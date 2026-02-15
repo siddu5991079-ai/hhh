@@ -111,7 +111,7 @@ def calculate_sleep_time(url):
             
         if expiry_ts:
             expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
-            wake_up_dt = expiry_dt - timedelta(minutes=5)
+            wake_up_dt = expiry_dt - timedelta(minutes=73)
             now_dt = datetime.now(PKT)
             seconds = (wake_up_dt - now_dt).total_seconds()
             
