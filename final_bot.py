@@ -9,23 +9,33 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
-# --- SETTINGS ---
+# ==========================================
+# ⚙️ MAIN SETTINGS (YAHAN APNI DETAILS DALEIN)
+# ==========================================
 DEFAULT_URL = "https://dadocric.st/player.php?id=willowextra"
 TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
 
-# ⚠️ APNI FRESH STREAM KEY YAHAN DALEIN ⚠️
+# 1️⃣ APNI FRESH OK.RU STREAM KEY YAHAN DALEIN
 STREAM_KEY = "NAYI_STREAM_KEY_YAHAN_DALEIN" 
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
-DEFAULT_SLEEP = 45 * 60 
 
+# 2️⃣ APNI WEBSHARE PROXY YAHAN DALEIN 
+# Format: "http://username:password@ip_address:port"
+# PROXY_URL = "http://cjasfidu:qhnyvm0qpf6p@31.59.20.176:6754"
+PROXY_URL = "http://cjasfidu:qhnyvm0qpf6p@31.59.20.176:6754"  # <-- NAYA: Proxy URL for Selenium and FFmpeg
+
+
+DEFAULT_SLEEP = 45 * 60 
 PKT = timezone(timedelta(hours=5))
+# ==========================================
 
 def get_link_with_headers():
-    print(f"\n[🕵️‍♂️] Bot link dhoondne ja raha hai: {TARGET_WEBSITE}")
+    print(f"\n[🕵️‍♂️] Bot link dhoondne ja raha hai via PROXY: {TARGET_WEBSITE}")
     
     options = webdriver.ChromeOptions()
     
-    # ⚠️ HEADLESS BAND KAR DIYA HAI (Kyunke Xvfb fake screen de raha hai) ⚠️
+    # --- GITHUB ACTIONS DISPLAY SETTINGS ---
+    # Headless band hai kyunke hum GitHub par 'xvfb' (fake screen) use kar rahe hain
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
@@ -43,12 +53,22 @@ def get_link_with_headers():
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
 
-    seleniumwire_options = {'disable_encoding': True, 'connection_keep_alive': True}
+    # --- PROXY INJECTION FOR SELENIUM ---
+    seleniumwire_options = {
+        'proxy': {
+            'http': PROXY_URL,
+            'https': PROXY_URL,
+            'no_proxy': 'localhost,127.0.0.1'
+        },
+        'disable_encoding': True, 
+        'connection_keep_alive': True
+    }
 
     driver = None
     data = None
 
     try:
+        # Browser proxy ke sath open ho raha hai
         driver = webdriver.Chrome(
             service=Service(ChromeDriverManager().install()),
             seleniumwire_options=seleniumwire_options,
@@ -59,7 +79,7 @@ def get_link_with_headers():
         
         driver.get(TARGET_WEBSITE)
         
-        print("[⏳] Page loading & Player Autoplay (15 sec)...") 
+        print("[⏳] Page loading & Player Autoplay (15 sec wait)...") 
         time.sleep(15) 
 
         for request in driver.requests:
@@ -75,8 +95,12 @@ def get_link_with_headers():
                     print(f"[✅] Link Found: {request.url[:60]}...")
                     break
                     
+        if not data:
+            print("\n[🚨] WARNING: .m3u8 link nahi mila! Wajah dhoond rahe hain...")
+            print(f"   -> Page Title: '{driver.title}'")
+
     except Exception as e:
-        print(f"\n[💥] ERROR:")
+        print(f"\n[💥] PYTHON ERROR:")
         print(traceback.format_exc())
     finally:
         if driver: driver.quit()
@@ -113,6 +137,7 @@ def start_stream(data):
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
+        "-http_proxy", PROXY_URL,  # <-- NAYA: FFmpeg bhi ab proxy use karega
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
@@ -121,7 +146,7 @@ def start_stream(data):
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
         "-f", "flv", RTMP_URL
     ]
-    print("\n[⚙️] FFmpeg Streaming Engine Start ho raha hai...")
+    print("\n[⚙️] FFmpeg Streaming Engine Start ho raha hai via Proxy...")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
 
 def main():
@@ -161,6 +186,8 @@ def main():
                 time.sleep(60)
                 
         except Exception:
+            print(f"\n[💥] MAIN LOOP ERROR:")
+            print(traceback.format_exc())
             time.sleep(60)
 
 if __name__ == "__main__":
