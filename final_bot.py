@@ -2,6 +2,7 @@ import os
 import time
 import subprocess
 import urllib.parse
+import traceback  # <-- NAYA: Deep error reporting ke liye
 from datetime import datetime, timezone, timedelta
 from seleniumwire import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -32,6 +33,9 @@ def get_link_with_headers():
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
+    
+    # Enable Browser Console Logging (Taake andha na rahay bot)
+    options.set_capability('goog:loggingPrefs', {'browser': 'ALL'})
     
     # --- ANTI-BOT BYPASS ---
     options.add_argument('--disable-blink-features=AutomationControlled')
@@ -69,13 +73,41 @@ def get_link_with_headers():
                         "url": request.url,
                         "ua": headers.get('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'),
                         "cookie": headers.get('Cookie', ''),
-                        # Referer ab dynamically target website ban jayega
                         "referer": headers.get('Referer', TARGET_WEBSITE) 
                     }
                     print(f"[✅] Link Found: {request.url[:60]}...")
                     break
+        
+        # DIAGNOSTIC PRINT: Agar link nahi mila toh kyun nahi mila?
+        if not data:
+            print("\n[🚨] WARNING: .m3u8 link nahi mila! Debug info neechay hai:")
+            print(f"   -> Page Title: '{driver.title}'")
+            print(f"   -> Current URL: {driver.current_url}")
+            
+            # WAF / Captcha Detection
+            if "Just a moment" in driver.title or "Cloudflare" in driver.title or "Access Denied" in driver.title:
+                print("   -> 🛑 WAF/CLOUDFLARE BLOCK: Website ne bot detect kar liya hai!")
+            else:
+                print("   -> 🔎 Check: Shayad 5 seconds wait time bohot kam hai is player ke liye.")
+            
+            # Print Javascript Console Errors
+            print("   -> 📜 Browser Console Logs:")
+            try:
+                logs = driver.get_log('browser')
+                error_found = False
+                for entry in logs:
+                    if entry['level'] == 'SEVERE' or 'error' in entry['message'].lower():
+                        print(f"      [JS Error]: {entry['message'][:150]}...")
+                        error_found = True
+                if not error_found:
+                    print("      (Koi Javascript error nahi mila)")
+            except Exception as log_e:
+                print(f"      Log read error: {log_e}")
+
     except Exception as e:
-        print(f"[⚠️] Link Finding Error: {e}")
+        # Full Traceback print karega taake line number pata chalay
+        print(f"\n[💥] CRITICAL PYTHON ERROR:")
+        print(traceback.format_exc())
     finally:
         if driver: driver.quit()
     
@@ -92,10 +124,7 @@ def calculate_sleep_time(url):
             
         if expiry_ts:
             expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
-            
-            # Expiry buffer set to 5 minutes
             wake_up_dt = expiry_dt - timedelta(minutes=5)
-            
             now_dt = datetime.now(PKT)
             seconds = (wake_up_dt - now_dt).total_seconds()
             
@@ -104,18 +133,18 @@ def calculate_sleep_time(url):
             
             if seconds > 0: return seconds
             else: return 60
-            
-    except:
+    except Exception as e:
+        print(f"[⚠️] Time Calculate Error: {e}")
         pass
     
     return DEFAULT_SLEEP
 
 def start_stream(data):
-    # FFmpeg command builder
     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
     
     cmd = [
         "ffmpeg", "-re",
+        "-loglevel", "error", # <-- NAYA: FFmpeg sirf critical errors print karega
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
@@ -124,41 +153,52 @@ def start_stream(data):
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
         "-f", "flv", RTMP_URL
     ]
-    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print("\n[⚙️] FFmpeg Streaming Engine Started...")
+    
+    # NAYA: stderr ko hide karne ke bajaye open rakha hai taake errors print hon
+    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL) 
 
 def main():
     print("=== DYNAMIC STREAMER STARTED ===")
     print(f"Target: {TARGET_WEBSITE}")
     
-    # Run for 6 hours (GitHub Actions limits to 360 mins anyway)
     end_time = time.time() + (6 * 60 * 60)
     current_process = None
 
     while time.time() < end_time:
-        data = get_link_with_headers()
-        
-        if data:
-            if current_process: current_process.terminate()
+        try:
+            data = get_link_with_headers()
             
-            current_process = start_stream(data)
-            print("[🚀] Stream Started to OK.ru!")
-            
-            sleep_seconds = calculate_sleep_time(data['url'])
-            print(f"[zzz] Sleeping for {int(sleep_seconds/60)} mins...")
-            
-            waited = 0
-            while waited < sleep_seconds:
-                time.sleep(10)
-                waited += 10
-                # Check if ffmpeg crashed
-                if current_process.poll() is not None:
-                    print("[⚠️] FFmpeg Stream Crash! Restarting...")
-                    break 
-            
-            print("[🔄] Refreshing Link...")
-            if current_process: current_process.terminate()
-        else:
-            print("[❌] Failed to get link. Retrying in 1 min...")
+            if data:
+                if current_process: current_process.terminate()
+                
+                current_process = start_stream(data)
+                print("[🚀] Stream Started to OK.ru!")
+                
+                sleep_seconds = calculate_sleep_time(data['url'])
+                print(f"[zzz] Sleeping for {int(sleep_seconds/60)} mins...")
+                
+                waited = 0
+                while waited < sleep_seconds:
+                    time.sleep(10)
+                    waited += 10
+                    # FFmpeg Crash Detector
+                    if current_process.poll() is not None:
+                        exit_code = current_process.poll()
+                        print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
+                        print("[🔍] Upar error log check karein ke FFmpeg kyun ruka.")
+                        break 
+                
+                print("[🔄] Refreshing Link...")
+                if current_process: current_process.terminate()
+            else:
+                print("[❌] Failed to get link. Retrying in 1 min...")
+                time.sleep(60)
+                
+        except Exception as main_e:
+            print(f"\n[💥] MAIN LOOP CRASHED:")
+            print(traceback.format_exc())
+            print("[🔄] 1 minute baad dobara try kar raha hoon...")
             time.sleep(60)
 
 if __name__ == "__main__":
