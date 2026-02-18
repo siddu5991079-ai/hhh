@@ -10,7 +10,7 @@ on:
       stream_key:
         description: 'OK.ru Stream Key'
         required: true
-        default: '11523921485458_10535073221266_x3wpukcvda'
+        default: '12894045478507_11326564534891_nv4r2x4wv4'
       proxy_ip:
         description: 'Proxy IP Address'
         required: true
@@ -22,11 +22,11 @@ on:
       proxy_user:
         description: 'Proxy Username'
         required: true
-        default: 'cjasfidu'
+        default: 'jznxuitn'
       proxy_pass:
         description: 'Proxy Password'
         required: true
-        default: 'qhnyvm0qpf6p'
+        default: '4sp9smus5w8q'
       manual_m3u8:
         description: '(OPTIONAL) Direct m3u8 Link'
         required: false
