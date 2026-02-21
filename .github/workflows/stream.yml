@@ -10,7 +10,7 @@ on:
       stream_key:
         description: 'OK.ru Stream Key'
         required: true
-        default: '12894045478507_11326564534891_nv4r2x4wv4'
+        default: '12968364416619_11418787318379_kukogbdiwi'
       proxy_ip:
         description: 'Proxy IP Address'
         required: true
