@@ -185,20 +185,19 @@ def start_stream(data):
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
+        "-fflags", "+genpts",  # 👈 YEH ADD KIYA HAI (Naye timestamps generate karne ke liye)
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
         "-b:v", "600k", "-maxrate", "800k", "-bufsize", "1200k",
         "-vf", "scale=854:480", "-r", "25",
-        "-g", "50",                             # 👈 NAYA ADD KIYA: OK.ru ko sync ke liye har 2 sec baad Keyframe chahiye (25fps x 2 = 50)
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
-        "-af", "aresample=async=1",             # 👈 NAYA ADD KIYA: Modern aur safe Audio Sync filter
-        "-max_muxing_queue_size", "1024",       # 👈 NAYA ADD KIYA: Sync karte waqt FFmpeg ko buffer crash se bachane ke liye
+        "-async", "1",         # 👈 YEH ADD KIYA HAI (Audio ko video ke sath force lock karne ke liye)
         "-f", "flv", RTMP_URL
     ]
     print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Direct GitHub Network par)")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
-    
+
 def main():
     print("========================================")
     print("   🚀 ULTIMATE ALL-IN-ONE STREAMER")
