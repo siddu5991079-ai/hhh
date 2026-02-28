@@ -176,6 +176,31 @@ def calculate_sleep_time(url):
         pass
     return DEFAULT_SLEEP
 
+    
+
+# ===============================================================
+
+# def start_stream(data):
+#     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
+#     if data.get('origin'):
+#         headers_cmd += f"\r\nOrigin: {data['origin']}"
+    
+#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
+#     cmd = [
+#         "ffmpeg", "-re",
+#         "-loglevel", "error", 
+#         "-fflags", "+genpts",  # Sync ke liye
+#         "-headers", headers_cmd,
+#         "-i", data['url'],
+#         "-c:v", "copy",        # 👈 YEH CHANGE KIYA: Original HD video direct aage bhejne ke liye
+#         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
+#         "-async", "1",         # Sync ke liye
+#         "-f", "flv", RTMP_URL
+#     ]
+#     print("[⚙️] [STEP 10] FFmpeg Stream HD Quality mein Launch ho rahi hai!")
+#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+
+
 def start_stream(data):
     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
     if data.get('origin'):
@@ -185,16 +210,21 @@ def start_stream(data):
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
-        "-fflags", "+genpts",  # Sync ke liye
+        "-fflags", "+genpts",
+        "-use_wallclock_as_timestamps", "1",  # 👈 YEH NAYA ADD KIYA: Sync ko real-time par lock karne ke liye
         "-headers", headers_cmd,
         "-i", data['url'],
-        "-c:v", "copy",        # 👈 YEH CHANGE KIYA: Original HD video direct aage bhejne ke liye
+        "-c:v", "copy",        # HD quality wesi hi rahegi
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
-        "-async", "1",         # Sync ke liye
+        "-async", "1",         
         "-f", "flv", RTMP_URL
     ]
     print("[⚙️] [STEP 10] FFmpeg Stream HD Quality mein Launch ho rahi hai!")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+
+# =========================================================
+
+
 
 def main():
     print("========================================")
@@ -320,7 +350,7 @@ if __name__ == "__main__":
 
 
 
-
+# upper code mei video ko original ok.ru par sent keya mean HD
 # ============================== 10000% 2 --- here sync problem ko teek karney k khosheh aab tu pata chalegy gaab internet slow huqaa ===========================
 # agar neeche wallah code kaam n karey to pher yeh mrthod add karo ispar try karo
 
