@@ -180,27 +180,6 @@ def calculate_sleep_time(url):
 
 # ===============================================================
 
-# def start_stream(data):
-#     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
-#     if data.get('origin'):
-#         headers_cmd += f"\r\nOrigin: {data['origin']}"
-    
-#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
-#     cmd = [
-#         "ffmpeg", "-re",
-#         "-loglevel", "error", 
-#         "-fflags", "+genpts",  # Sync ke liye
-#         "-headers", headers_cmd,
-#         "-i", data['url'],
-#         "-c:v", "copy",        # 👈 YEH CHANGE KIYA: Original HD video direct aage bhejne ke liye
-#         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
-#         "-async", "1",         # Sync ke liye
-#         "-f", "flv", RTMP_URL
-#     ]
-#     print("[⚙️] [STEP 10] FFmpeg Stream HD Quality mein Launch ho rahi hai!")
-#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
-
-
 def start_stream(data):
     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
     if data.get('origin'):
@@ -208,20 +187,21 @@ def start_stream(data):
     
     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
     cmd = [
-        "ffmpeg", 
-        # 👈 YAHAN SE "-re" aur wallclock HATA DIYA HAI taake stream natural live speed par chale
+        "ffmpeg", "-re",
         "-loglevel", "error", 
-        "-fflags", "+genpts",
+        "-fflags", "+genpts",  # Sync ke liye
         "-headers", headers_cmd,
         "-i", data['url'],
-        "-c:v", "copy",        # HD quality aage bhejne ke liye
+        "-c:v", "copy",        # 👈 YEH CHANGE KIYA: Original HD video direct aage bhejne ke liye
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
-        "-async", "1",         # Audio/Video Sync ke liye
-        "-max_muxing_queue_size", "1024", # 👈 YEH ADD KIYA HAI taake chunks buffer na hon
+        "-async", "1",         # Sync ke liye
         "-f", "flv", RTMP_URL
     ]
     print("[⚙️] [STEP 10] FFmpeg Stream HD Quality mein Launch ho rahi hai!")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+
+
+
 
 # =========================================================
 
