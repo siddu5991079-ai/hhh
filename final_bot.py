@@ -180,6 +180,27 @@ def calculate_sleep_time(url):
 
 # ===============================================================
 
+# def start_stream(data):
+#     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
+#     if data.get('origin'):
+#         headers_cmd += f"\r\nOrigin: {data['origin']}"
+    
+#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
+#     cmd = [
+#         "ffmpeg", "-re",
+#         "-loglevel", "error", 
+#         "-fflags", "+genpts",  # Sync ke liye
+#         "-headers", headers_cmd,
+#         "-i", data['url'],
+#         "-c:v", "copy",        # 👈 YEH CHANGE KIYA: Original HD video direct aage bhejne ke liye
+#         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
+#         "-async", "1",         # Sync ke liye
+#         "-f", "flv", RTMP_URL
+#     ]
+#     print("[⚙️] [STEP 10] FFmpeg Stream HD Quality mein Launch ho rahi hai!")
+#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+
+
 def start_stream(data):
     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
     if data.get('origin'):
@@ -189,18 +210,21 @@ def start_stream(data):
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
-        "-fflags", "+genpts",  # Sync ke liye
+        "-fflags", "+genpts",  # Sync maintain rakhne ke liye
         "-headers", headers_cmd,
         "-i", data['url'],
-        "-c:v", "copy",        # 👈 YEH CHANGE KIYA: Original HD video direct aage bhejne ke liye
+        
+        # 👇 YEH WAPIS ADD KIYA HAI: Video quality ko chota (480p) aur stabilize karne ke liye
+        "-c:v", "libx264", "-preset", "ultrafast",
+        "-b:v", "600k", "-maxrate", "800k", "-bufsize", "1200k",
+        "-vf", "scale=854:480", "-r", "25",
+        
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
-        "-async", "1",         # Sync ke liye
+        "-async", "1",         # Audio ko video ke sath lock rakhne ke liye
         "-f", "flv", RTMP_URL
     ]
-    print("[⚙️] [STEP 10] FFmpeg Stream HD Quality mein Launch ho rahi hai!")
+    print("[⚙️] [STEP 10] FFmpeg Stream 480p (Optimized) Quality mein Launch ho rahi hai!")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
-
-
 
 
 # =========================================================
