@@ -176,7 +176,7 @@ def calculate_sleep_time(url):
         pass
     return DEFAULT_SLEEP
 
-    
+
 
 # ===============================================================
 
@@ -208,15 +208,16 @@ def start_stream(data):
     
     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
     cmd = [
-        "ffmpeg", "-re",
+        "ffmpeg", 
+        # 👈 YAHAN SE "-re" aur wallclock HATA DIYA HAI taake stream natural live speed par chale
         "-loglevel", "error", 
         "-fflags", "+genpts",
-        "-use_wallclock_as_timestamps", "1",  # 👈 YEH NAYA ADD KIYA: Sync ko real-time par lock karne ke liye
         "-headers", headers_cmd,
         "-i", data['url'],
-        "-c:v", "copy",        # HD quality wesi hi rahegi
+        "-c:v", "copy",        # HD quality aage bhejne ke liye
         "-c:a", "aac", "-b:a", "64k", "-ar", "44100",
-        "-async", "1",         
+        "-async", "1",         # Audio/Video Sync ke liye
+        "-max_muxing_queue_size", "1024", # 👈 YEH ADD KIYA HAI taake chunks buffer na hon
         "-f", "flv", RTMP_URL
     ]
     print("[⚙️] [STEP 10] FFmpeg Stream HD Quality mein Launch ho rahi hai!")
