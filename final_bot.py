@@ -238,7 +238,6 @@ def start_stream(data):
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
-        "-fflags", "+genpts",  # Sync maintain rakhne ke liye
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
