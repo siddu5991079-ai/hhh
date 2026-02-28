@@ -6,7 +6,7 @@ on:
       target_url:
         description: 'Target Video Link (Auto Mode)'
         required: true
-        default: 'https://dadocric.st/player.php?id=willowextra'
+        default: 'https://dadocric.st/player.php?id=starsp3'
       stream_key:
         description: 'OK.ru Stream Key'
         required: true
@@ -22,11 +22,11 @@ on:
       proxy_user:
         description: 'Proxy Username'
         required: true
-        default: 'cjasfidu'
+        default: 'fnhslzsx'
       proxy_pass:
         description: 'Proxy Password'
         required: true
-        default: 'qhnyvm0qpf6p'
+        default: '4p7wbke3gw2e'
       manual_m3u8:
         description: '(OPTIONAL) Direct m3u8 Link'
         required: false
