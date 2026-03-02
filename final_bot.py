@@ -177,53 +177,53 @@ def calculate_sleep_time(url):
     return DEFAULT_SLEEP
 
 #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-# def start_stream(data):
-#     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
-#     if data.get('origin'):
-#         headers_cmd += f"\r\nOrigin: {data['origin']}"
-    
-#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p ULTRA-LOW BANDWIDTH)...")
-#     cmd = [
-#         "ffmpeg", "-re",
-#         "-loglevel", "error", 
-#         "-fflags", "+genpts",  
-#         "-headers", headers_cmd,
-#         "-i", data['url'],
-#         "-c:v", "libx264", "-preset", "ultrafast",
-#         "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k", # 👈 Bitrate half kar diya
-#         "-vf", "scale=640:360", "-r", "20",                     # 👈 360p aur 20 FPS kar diya
-#         "-c:a", "aac", "-b:a", "32k", "-ar", "44100",           # 👈 Audio quality low kar di
-#         "-async", "1",         
-#         "-f", "flv", RTMP_URL
-#     ]
-#     print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Slow Internet Optimized)")
-#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
-
-
-
 def start_stream(data):
     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
     if data.get('origin'):
         headers_cmd += f"\r\nOrigin: {data['origin']}"
     
-    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p + STABLE KEYFRAMES)...")
+    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p ULTRA-LOW BANDWIDTH)...")
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
-        "-fflags", "+genpts+discardcorrupt",  # 👈 Kharab hone par corrupt data ko discard karega
+        "-fflags", "+genpts",  
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
-        "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k",
-        "-vf", "scale=640:360", "-r", "20",
-        "-g", "40",                           # 👈 NAYA PARAMETER: Har 2 sec baad keyframe bhejega (20fps x 2 = 40). Yeh sync out nahi hone dega!
-        "-c:a", "aac", "-b:a", "32k", "-ar", "44100",
+        "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k", # 👈 Bitrate half kar diya
+        "-vf", "scale=640:360", "-r", "20",                     # 👈 360p aur 20 FPS kar diya
+        "-c:a", "aac", "-b:a", "32k", "-ar", "44100",           # 👈 Audio quality low kar di
+        "-async", "1",         
         "-f", "flv", RTMP_URL
     ]
-    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Bursting Fixed)")
+    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Slow Internet Optimized)")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
 
+
+
+# def start_stream(data):
+#     headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}\r\nCookie: {data['cookie']}"
+#     if data.get('origin'):
+#         headers_cmd += f"\r\nOrigin: {data['origin']}"
     
+#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p + STABLE KEYFRAMES)...")
+#     cmd = [
+#         "ffmpeg", "-re",
+#         "-loglevel", "error", 
+#         "-fflags", "+genpts+discardcorrupt",  # 👈 Kharab hone par corrupt data ko discard karega
+#         "-headers", headers_cmd,
+#         "-i", data['url'],
+#         "-c:v", "libx264", "-preset", "ultrafast",
+#         "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k",
+#         "-vf", "scale=640:360", "-r", "20",
+#         "-g", "40",                           # 👈 NAYA PARAMETER: Har 2 sec baad keyframe bhejega (20fps x 2 = 40). Yeh sync out nahi hone dega!
+#         "-c:a", "aac", "-b:a", "32k", "-ar", "44100",
+#         "-f", "flv", RTMP_URL
+#     ]
+#     print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Bursting Fixed)")
+#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+
+
 def main():
     print("========================================")
     print("   🚀 ULTIMATE ALL-IN-ONE STREAMER")
