@@ -206,26 +206,24 @@ def start_stream(data):
     if data.get('origin'):
         headers_cmd += f"\r\nOrigin: {data['origin']}"
     
-    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p + AUDIO SYNC FIX)...")
+    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p + STABLE KEYFRAMES)...")
     cmd = [
-        "ffmpeg", 
-        "-use_wallclock_as_timestamps", "1", # 👈 YEH SAB SE ZAROORI HAI: Toote hue time ko fix karne ke liye
-        "-re",
+        "ffmpeg", "-re",
         "-loglevel", "error", 
-        "-fflags", "+genpts+igndts",         # 👈 igndts add kiya taake kharab timestamps skip ho jayein
+        "-fflags", "+genpts+discardcorrupt",  # 👈 Kharab hone par corrupt data ko discard karega
         "-headers", headers_cmd,
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
         "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k",
         "-vf", "scale=640:360", "-r", "20",
-        "-fps_mode", "cfr",                  # 👈 Force Constant Framerate (Video smooth rakhne ke liye)
+        "-g", "40",                           # 👈 NAYA PARAMETER: Har 2 sec baad keyframe bhejega (20fps x 2 = 40). Yeh sync out nahi hone dega!
         "-c:a", "aac", "-b:a", "32k", "-ar", "44100",
-        "-af", "aresample=async=1000",       # 👈 Naya Audio Sync Filter (Purane -async 1 ki jagah)
         "-f", "flv", RTMP_URL
     ]
-    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Desync Fixed)")
+    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Bursting Fixed)")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
 
+    
 def main():
     print("========================================")
     print("   🚀 ULTIMATE ALL-IN-ONE STREAMER")
