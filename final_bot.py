@@ -21,9 +21,9 @@ STREAM_ID = str(os.environ.get('STREAM_ID', '1'))
 
 MULTI_KEYS = {
     '1': os.environ.get('STREAM_KEY', '115'), # Default Key
-    # '1': '11523921485458_10535073221266_x3wpukcvda',
-    '2': '12451604930166_12063732730486_jzz3e3hu7m', # 👈 Apni Stream 2 ki key yahan dalein
-    '3': '13540376190571_12140057660011_vjbl5mabsi'  # 👈 Apni Stream 3 ki key yahan dalein
+    # '1': '13589685935723_12204271340139_j7snvpr4zi',
+    '2': '13589668568683_12204248992363_u6nxcp7kn4', # 👈 Apni Stream 2 ki key yahan dalein
+    '3': ''  # 👈 Apni Stream 3 ki key yahan dalein
 }
 
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
