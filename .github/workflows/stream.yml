@@ -11,6 +11,7 @@ on:
           - '1'
           - '2'
           - '3'
+          - '4'
         default: '1'
       target_url:
         description: 'Target Video Link (Auto Mode)'
