@@ -24,6 +24,7 @@ MULTI_KEYS = {
     # '1': '13792808935019_12476172012139_mstifuzoo4',
     '2': '13872104808043_12616366492267_colaogtdju', # 👈 Apni Stream 2 ki key yahan dalein
     '3': '13937264369259_12745414478443_5ohyc5rlby'  # 👈 Apni Stream 3 ki key yahan dalein
+    '4': '13937400815211_12745694644843_rbuz4lfm6m'
 }
 
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
