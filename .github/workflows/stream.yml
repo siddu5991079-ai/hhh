@@ -32,11 +32,11 @@ on:
       proxy_user:
         description: 'Proxy Username'
         required: true
-        default: 'fnhslzsx'
+        default: 'umbvizsu'
       proxy_pass:
         description: 'Proxy Password'
         required: true
-        default: '4p7wbke3gw2e'
+        default: '1n8uzj7iri0s'
       manual_m3u8:
         description: '(OPTIONAL) Direct m3u8 Link'
         required: false
