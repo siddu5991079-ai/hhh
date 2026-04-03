@@ -20,11 +20,11 @@ TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
 STREAM_ID = str(os.environ.get('STREAM_ID', '1'))
 
 MULTI_KEYS = {
-    '1': os.environ.get('STREAM_KEY', '13872122306155_12616401291883_ym5ce676vu'), # Default Key
+    '1': os.environ.get('STREAM_KEY', '14136719122027_13152308497003_hnlk6em2e4'), # Default Key
     # '1': '13792808935019_12476172012139_mstifuzoo4',
-    '2': '13872104808043_12616366492267_colaogtdju', # 👈 Apni Stream 2 ki key yahan dalein
-    '3': '13937264369259_12745414478443_5ohyc5rlby',  # 👈 Apni Stream 3 ki key yahan dalein
-    '4': '13937400815211_12745694644843_rbuz4lfm6m'
+    '2': '14136743566955_13152356600427_vmdsemtmo4', # 👈 Apni Stream 2 ki key yahan dalein
+    '3': '14136762048107_13152392710763_22fobqpsdi',  # 👈 Apni Stream 3 ki key yahan dalein
+    '4': '14136778563179_13152426265195_c5quhoj2vm'
 }
 
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
