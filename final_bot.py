@@ -5,11 +5,15 @@ import urllib.parse
 import traceback
 import requests
 from datetime import datetime, timezone, timedelta
+
+print("[Step 1] Sabhi zaroori libraries import ho gayi hain.")
 from DrissionPage import ChromiumPage, ChromiumOptions
 
 # ==========================================
 # ⚙️ MAIN SETTINGS
 # ==========================================
+print("[Step 2] Environment variables aur settings load ki ja rahi hain...")
+
 STREAM_ID = str(os.environ.get('STREAM_ID', '1'))
 MULTI_KEYS = {
     '1': os.environ.get('STREAM_KEY', '14136719122027_13152308497003_hnlk6em2e4'), 
@@ -19,15 +23,19 @@ MULTI_KEYS = {
 }
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
+print(f"[Step 2.1] OK.ru Server ID: {STREAM_ID} set ho gaya.")
 
 # --- STOP TIME LOGIC (AM/PM) ---
 STOP_TIME_STR = os.environ.get('STOP_TIME', '').strip()
+print(f"[Step 2.2] Stop time check kiya: '{STOP_TIME_STR}'")
 
 # --- ERROR TRACKING LOGIC ---
 consecutive_error_count = 0
 last_error_msg = ""
 
 SOURCE_CHANNEL = os.environ.get('SOURCE_CHANNEL', 'willowextra')
+print(f"[Step 2.3] Source Channel select hua: {SOURCE_CHANNEL}")
+
 BHALOCAST_LINKS = {
     'willowextra': "https://bhalocast.com/atoplay.php?v=wextres&hello=m1lko&expires=123456",
     'ptvskpr': "https://bhalocast.com/atoplay.php?v=ptvskpr&hello=m1lko&expires=123456",
@@ -39,6 +47,7 @@ if SOURCE_CHANNEL == 'custom_url':
     TARGET_WEBSITE = os.environ.get('TARGET_URL', '')
 else:
     TARGET_WEBSITE = BHALOCAST_LINKS.get(SOURCE_CHANNEL, BHALOCAST_LINKS['willowextra'])
+print(f"[Step 2.4] Target URL final ho gaya: {TARGET_WEBSITE}")
 
 REFERER = "https://bhalocast.com/"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
@@ -50,6 +59,7 @@ PROXY_PASS = os.environ.get('PROXY_PASS', '5ex21twl07tx')
 PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
 
 PKT = timezone(timedelta(hours=5))
+print("[Step 2.5] Pakistan Standard Time (PKT) timezone set ho gaya.")
 # ==========================================
 
 def check_stop_time():
@@ -59,37 +69,34 @@ def check_stop_time():
     
     try:
         now = datetime.now(PKT)
-        time_str = STOP_TIME_STR.lower().replace(" ", "") # E.g., '1 pm' becomes '1pm'
+        time_str = STOP_TIME_STR.lower().replace(" ", "")
         
         is_pm = 'pm' in time_str
         is_am = 'am' in time_str
         
-        # Sirf numbers extract karo (e.g., '12pm' -> '12')
         hour_str = ''.join(filter(str.isdigit, time_str))
         if not hour_str:
             return False
             
         stop_hour = int(hour_str)
         
-        # 12-hour AM/PM ko 24-hour mein convert karo
         if is_pm and stop_hour != 12:
             stop_hour += 12
         elif is_am and stop_hour == 12:
             stop_hour = 0
             
-        # Agar current PKT hour us target hour se match kar jaye
-        # (Jaise hi target ghanta shuru hoga, bot stop ho jayega)
         if now.hour == stop_hour:
+            print(f"[🕒 TIME MATCH] Current hour {now.hour} match ho gaya target {stop_hour} se!")
             return True
             
     except Exception as e:
-        print(f"[⚠️] Time check error: {e}")
+        print(f"[⚠️ ERROR] Time check karne mein masla aaya: {e}")
         
     return False
 
 def trigger_next_run():
     print("\n" + "="*50)
-    print(" ⏰ AUTO-RESTART TRIGGER ACTIVATED ⏰")
+    print("[Step API-1] ⏰ AUTO-RESTART TRIGGER ACTIVATED")
     print("="*50)
     
     token = os.environ.get('GH_PAT')
@@ -97,9 +104,10 @@ def trigger_next_run():
     branch = os.environ.get('GITHUB_REF_NAME', 'main')
     
     if not token or not repo:
-        print("[❌] GH_PAT ya Repo Name nahi mila! Auto-Restart Fail ho gaya.")
+        print("[Step API-2 ❌] GH_PAT ya Repo Name nahi mila! Auto-Restart Fail.")
         return
 
+    print("[Step API-3] GitHub API ka URL tayyar kiya ja raha hai...")
     url = f"https://api.github.com/repos/{repo}/actions/workflows/stream.yml/dispatches"
     
     headers = {
@@ -123,37 +131,46 @@ def trigger_next_run():
     }
     
     try:
+        print("[Step API-4] GitHub ko naya workflow chalane ki request bhej raha hoon...")
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 204:
-            print(f"[✅] SUCCESS! Nayi 'stream.yml' background mein start ho gayi hai!")
+            print(f"[Step API-5 ✅] SUCCESS! Nayi 'stream.yml' background mein start ho gayi hai!")
         else:
-            print(f"[❌] FAILED to start new bot. Status: {response.status_code}")
+            print(f"[Step API-5 ❌] FAILED to start new bot. Status Code: {response.status_code}")
     except Exception as e:
-        print(f"[💥] API Error: {e}")
+        print(f"[Step API-5 💥] API Error Aaya: {e}")
 
 def get_link_with_headers():
-    print(f"\n[🔍] Scanning Target: {TARGET_WEBSITE}")
+    print(f"\n[Step Browser-1] M3U8 Link dhoondhne ka process start...")
     opts = ChromiumOptions()
     opts.set_argument('--autoplay-policy=no-user-gesture-required')
     opts.set_argument('--no-sandbox')
     opts.set_argument('--disable-gpu')
     opts.set_argument('--disable-dev-shm-usage')
     opts.set_argument('--mute-audio')
+    print("[Step Browser-2] Chrome ke options set ho gaye (No Proxy).")
 
     page = None
     data = None
     try:
+        print("[Step Browser-3] DrissionPage (Chromium Browser) start kiya ja raha hai...")
         page = ChromiumPage(addr_or_opts=opts)
+        
+        print("[Step Browser-4] Network tab mein 'm3u8' packets listen karna start kiya.")
         page.listen.start('m3u8')
+        
+        print(f"[Step Browser-5] Website par ja raha hoon: {TARGET_WEBSITE}")
         page.get(TARGET_WEBSITE)
         
+        print("[Step Browser-6] Cloudflare Turnstile bypass ka wait aur M3U8 scanning start (Max 90 sec)...")
         start_time = time.time()
+        
         while time.time() - start_time < 90:
             for packet in page.listen.steps(count=1, timeout=3, gap=1):
                 if packet:
                     items = packet if isinstance(packet, list) else [packet]
                     for p in items:
-                        print(f"\n[FOUND] 🎉 M3U8: {p.url}")
+                        print(f"\n[Step Browser-7 🎉] BINGO! M3U8 Link Mil Gaya: {p.url}")
                         req_headers = p.request.headers if hasattr(p, 'request') else {}
                         data = {
                             "url": p.url,
@@ -162,19 +179,33 @@ def get_link_with_headers():
                             "referer": REFERER,
                             "origin": req_headers.get('Origin', '')
                         }
+                        print("[Step Browser-8] Headers aur URL successfully extract kar liye gaye.")
                         break
                 if data: break
             if data: break
+            
+            elapsed = int(time.time() - start_time)
+            if elapsed % 15 == 0 and elapsed > 0:
+                print(f"[Wait] {elapsed} seconds guzar gaye... Link dhoondh raha hoon.")
+
+        if not data:
+            print("\n[🚨 WARNING] 90 Seconds guzar gaye par M3U8 link nahi mila! Cloudflare ne block kiya hoga.")
+            
     except Exception as e:
-        print(f"[💥] Browser Error: {e}")
+        print(f"\n[💥 BROWSER CRASH] Python Script Browser Error:")
+        print(traceback.format_exc())
     finally:
         if page:
+            print("[Step Browser-9 🧹] Chrome browser background se band kiya ja raha hai...")
             page.quit()
     return data
 
 def start_stream(data):
+    print("\n[Step Stream-1] FFmpeg Command aur Headers tayyar kiye ja rahe hain...")
     headers_cmd = f"Referer: {data['referer']}\r\nUser-Agent: {data['ua']}\r\n"
-    if data.get('cookie'): headers_cmd += f"Cookie: {data['cookie']}\r\n"
+    if data.get('cookie'): 
+        headers_cmd += f"Cookie: {data['cookie']}\r\n"
+        print("[Step Stream-2] Cookie headers mein shamil kar di gayi.")
     
     cmd = [
         "ffmpeg", "-re", "-loglevel", "error", "-fflags", "+genpts",
@@ -184,19 +215,16 @@ def start_stream(data):
         "-vf", "scale=640:360", "-r", "20", "-c:a", "aac", "-b:a", "32k",
         "-f", "flv", RTMP_URL
     ]
+    print("[Step Stream-3] FFmpeg Command Launch kar raha hoon! (Subprocess Popen)")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
 
 def main():
     global consecutive_error_count, last_error_msg
     
-    print("========================================")
-    print("   🚀 ULTIMATE ALL-IN-ONE STREAMER (DrissionPage)")
-    print(f"   📡 OK.RU SERVER ID: {STREAM_ID}")
-    print(f"   🎥 BHALOCAST CHANNEL: {SOURCE_CHANNEL}")
-    if STOP_TIME_STR:
-        print(f"   ⏰ SCHEDULED STOP TIME: {STOP_TIME_STR.upper()} (PKT)")
-    print("========================================")
-
+    print("\n" + "="*40)
+    print(" 🚀 MAIN LOOP START HO GAYA HAI 🚀")
+    print("="*40)
+    
     start_time = time.time()
     end_time = start_time + (6 * 60 * 60) # 6 hours max
     RESTART_TIME_LIMIT = (5 * 60 * 60) + (45 * 60) # 5h 45m
@@ -206,39 +234,51 @@ def main():
     data = None
 
     while time.time() < end_time:
-        # 1. Check Stop Time
+        print("\n[Main Loop - Check 1] Stop time verify kar raha hoon...")
         if check_stop_time():
-            print(f"\n🛑 TIME OVER! Pakistan Time ke mutabiq {STOP_TIME_STR.upper()} baj gaye hain. Bot stop kar raha hoon.")
-            if current_process: current_process.terminate()
+            print(f"\n🛑 MISSION ABORT: Pakistan Time ke mutabiq {STOP_TIME_STR.upper()} baj gaye hain. Bot stop kar raha hoon.")
+            if current_process: 
+                current_process.terminate()
+                print("[Main Loop] FFmpeg process terminate kar diya.")
             break
 
         try:
             if not data:
+                print("[Main Loop - Fetching] Naya link laane ke liye function call kar raha hoon...")
                 data = get_link_with_headers()
                 if not data:
+                    print("[Main Loop - Retry Wait] Link nahi mila, 60 seconds baad wapas try karunga.")
                     time.sleep(60)
                     continue
 
+            print("[Main Loop - Execute] Link mil chuka hai, purani stream agar hai toh band kar raha hoon...")
             if current_process: current_process.terminate()
-            current_process = start_stream(data)
-            print("\n✅ Stream Live OK.ru Par!")
             
-            # Reset error count on success
+            print("[Main Loop - Launching] Nayi stream OK.ru par bhej raha hoon...")
+            current_process = start_stream(data)
+            print("\n✅ STREAM LIVE HO GAYI HAI!")
+            
+            print("[Main Loop - Reset] Error counter ko 0 par reset kar raha hoon.")
             consecutive_error_count = 0
             last_error_msg = ""
 
-            # Waiting loop
+            print("[Main Loop - Monitor] Ab bot 10-10 second ke gaps mein stream ko monitor karega...")
             waited = 0
-            while waited < 600: # Check every 10 mins
+            while waited < 600: # Har 10 minute tak check karega
                 time.sleep(10)
                 waited += 10
                 
-                # Check auto-restart trigger limit
                 if (time.time() - start_time) > RESTART_TIME_LIMIT and not next_run_triggered:
+                    print("[Monitor] 5 ghante 45 minute poore ho gaye, Github ko naya bot start karne ka bol raha hoon.")
                     trigger_next_run()
                     next_run_triggered = True
                 
-                if check_stop_time() or current_process.poll() is not None:
+                if check_stop_time():
+                    print("[Monitor] User ka diya hua Stop Time aa gaya!")
+                    break
+                    
+                if current_process.poll() is not None:
+                    print(f"[Monitor ⚠️] ALERT: FFmpeg stream crash ya disconnect ho gayi hai! Exit code: {current_process.poll()}")
                     break
             
             if current_process.poll() is not None:
@@ -246,26 +286,34 @@ def main():
 
         except Exception as e:
             err_str = str(e)
-            print(f"\n⚠️ Error Aaya: {err_str}")
+            print(f"\n[Main Loop ⚠️ CATCH BLOCK] Error Pakda Gaya: {err_str}")
             
-            # 2. Consecutive Error Logic
+            print("[Error Check] Same error check kar raha hoon...")
             if err_str == last_error_msg:
                 consecutive_error_count += 1
+                print("[Error Check] Ye error dubara aaya hai.")
             else:
                 consecutive_error_count = 1
                 last_error_msg = err_str
+                print("[Error Check] Ye naya error hai.")
 
-            print(f"🔄 Lagatar (Consecutive) Errors: {consecutive_error_count}/3")
+            print(f"🔄 Lagatar (Consecutive) Errors Track: {consecutive_error_count}/3")
             
             if consecutive_error_count >= 3:
-                print("\n🚨 3 BAAR SAME ERROR AAYA HAI! Bot completely stop kiya ja raha hai.")
+                print("\n🚨 CRITICAL FAILURE: 3 BAAR SAME ERROR AAYA HAI! Bot completely stop kiya ja raha hai.")
                 if current_process: current_process.terminate()
                 break
                 
+            print("[Error Recovery] 30 seconds wait kar ke dobara loop start karunga...")
             time.sleep(30)
+
+    print("\n[End] Script ka execution khatam ho gaya.")
 
 if __name__ == "__main__":
     main()
+
+
+    
 
     
 
