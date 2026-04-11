@@ -10,34 +10,35 @@ from DrissionPage import ChromiumPage, ChromiumOptions
 # ==========================================
 # ⚙️ MAIN SETTINGS (DYNAMIC FROM GITHUB)
 # ==========================================
+# --- PURANA OK.RU LOGIC (Restored) ---
 STREAM_ID = str(os.environ.get('STREAM_ID', '1'))
-
-# 🔥 FILE 1 KA LOGIC: Bhalocast Links mapped with Server ID
-BHALOCAST_LINKS = {
-    '1': "https://bhalocast.com/atoplay.php?v=wextres&hello=m1lko&expires=123456",     # willowextra
-    '2': "https://bhalocast.com/atoplay.php?v=ptvskpr&hello=m1lko&expires=123456",     # ptvskpr
-    '3': "https://bhalocast.com/atoplay.php?v=star1kibich&hello=m1lko&expires=123456", # star1kibich
-    '4': "https://bhalocast.com/penguin.php?v=ptvskpr&hello=m1lko&expires=123456"      # penguin
-}
-
-# Agar GitHub se URL nahi aata ya empty hai, toh File 1 ke Bhalocast links uthayega
-DEFAULT_URL = BHALOCAST_LINKS.get(STREAM_ID, BHALOCAST_LINKS['1'])
-TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
-
-# 🔥 FILE 1 KA LOGIC: Hardcoded Headers for Bhalocast Bypass
-REFERER = "https://bhalocast.com/"
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-
-# --- Stream Keys Logic ---
 MULTI_KEYS = {
     '1': os.environ.get('STREAM_KEY', '14136719122027_13152308497003_hnlk6em2e4'), # Default Key
-    '2': '14136743566955_13152356600427_vmdsemtmo4', # 👈 Apni Stream 2 ki key
-    '3': '14136762048107_13152392710763_22fobqpsdi',  # 👈 Apni Stream 3 ki key
-    '4': '14136778563179_13152426265195_c5quhoj2vm'  # 👈 Apni Stream 4 ki key
+    '2': '14136743566955_13152356600427_vmdsemtmo4', 
+    '3': '14136762048107_13152392710763_22fobqpsdi',  
+    '4': '14136778563179_13152426265195_c5quhoj2vm'
 }
-
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
+
+# --- NAYA SOURCE CHANNEL LOGIC (Bhalocast ke liye) ---
+SOURCE_CHANNEL = os.environ.get('SOURCE_CHANNEL', 'willowextra')
+
+BHALOCAST_LINKS = {
+    'willowextra': "https://bhalocast.com/atoplay.php?v=wextres&hello=m1lko&expires=123456",
+    'ptvskpr': "https://bhalocast.com/atoplay.php?v=ptvskpr&hello=m1lko&expires=123456",
+    'star1kibich': "https://bhalocast.com/atoplay.php?v=star1kibich&hello=m1lko&expires=123456",
+    'penguin_ptvskpr': "https://bhalocast.com/penguin.php?v=ptvskpr&hello=m1lko&expires=123456"
+}
+
+if SOURCE_CHANNEL == 'custom_url':
+    TARGET_WEBSITE = os.environ.get('TARGET_URL', '')
+else:
+    TARGET_WEBSITE = BHALOCAST_LINKS.get(SOURCE_CHANNEL, BHALOCAST_LINKS['willowextra'])
+
+# File 1 wale Hardcoded Headers Bhalocast bypass ke liye
+REFERER = "https://bhalocast.com/"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 # ------------------------------------------------
 
 PROXY_IP = os.environ.get('PROXY_IP', '31.59.20.176')
@@ -50,8 +51,6 @@ PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
 MANUAL_M3U8 = os.environ.get('MANUAL_M3U8', '').strip()
 MANUAL_REFERER = os.environ.get('MANUAL_REFERER', '').strip()
 MANUAL_ORIGIN = os.environ.get('MANUAL_ORIGIN', '').strip()
-
-# --- CASE 2: RAW COMMAND INPUT ---
 MANUAL_FFMPEG_CMD = os.environ.get('MANUAL_FFMPEG_CMD', '').strip()
 
 DEFAULT_SLEEP = 45 * 60 
@@ -62,7 +61,7 @@ def trigger_next_run():
     print("\n" + "="*50)
     print(" ⏰ AUTO-RESTART TRIGGER ACTIVATED ⏰")
     print("="*50)
-    print("[🔄] 5 Ghante 45 Minute poore ho gaye hain! Naya Bot chala raha hoon...")
+    print(f"[🔄] 5 Ghante 45 Minute poore! Bot Restart (Server {STREAM_ID}, Channel {SOURCE_CHANNEL})...")
     
     token = os.environ.get('GH_PAT')
     repo = os.environ.get('GITHUB_REPOSITORY') 
@@ -83,7 +82,8 @@ def trigger_next_run():
         "ref": branch,
         "inputs": {
             "stream_id": STREAM_ID,
-            "target_url": TARGET_WEBSITE,
+            "source_channel": SOURCE_CHANNEL, # <-- NAYA INPUT YAHAN BHI ADD KIYA TAAYKE RESTART THEEK HO
+            "target_url": os.environ.get('TARGET_URL', ''),
             "stream_key": STREAM_KEY,
             "proxy_ip": PROXY_IP,
             "proxy_port": PROXY_PORT,
@@ -99,14 +99,13 @@ def trigger_next_run():
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 204:
-            print(f"[✅] SUCCESS! Nayi 'stream.yml' (Server {STREAM_ID}) background mein start ho gayi hai!")
+            print(f"[✅] SUCCESS! Nayi 'stream.yml' background mein start ho gayi hai!")
         else:
             print(f"[❌] FAILED to start new bot. Status: {response.status_code}")
     except Exception as e:
         print(f"[💥] API Error: {e}")
 
 def get_link_with_headers():
-    """DrissionPage se M3U8 link extract karna (Bhalocast bypass ke sath)"""
     print(f"\n========================================")
     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
     print(f"[🔍] [STEP 2] Proxy Set for Link Fetching: {PROXY_URL.split('@')[-1]}")
@@ -117,8 +116,6 @@ def get_link_with_headers():
     opts.set_argument('--disable-gpu')
     opts.set_argument('--autoplay-policy=no-user-gesture-required')
     opts.set_argument('--mute-audio')
-    
-    # Proxy Setup for DrissionPage
     opts.set_proxy(PROXY_URL)
 
     page = None
@@ -127,18 +124,14 @@ def get_link_with_headers():
     try:
         print(f"[⚙️] [STEP 3] Chromium Browser start ho raha hai (DrissionPage)...")
         page = ChromiumPage(addr_or_opts=opts)
-        
-        # M3U8 packets ko listen karna start karein
         page.listen.start('m3u8')
         
         print(f"[🌐] [STEP 5] Website open kar raha hoon...")
         page.get(TARGET_WEBSITE)
         
         print("[⏳] [STEP 6] Cloudflare Turnstile bypass wait... Scanning for .m3u8 (Max 90s)")
-        
         start_time = time.time()
         
-        # 90 seconds tak background requests check karna
         while time.time() - start_time < 90:
             for packet in page.listen.steps(count=1, timeout=3, gap=1):
                 if packet:
@@ -146,12 +139,10 @@ def get_link_with_headers():
                     for p in items:
                         print(f"\n🎉 [BINGO] Cloudflare Bypassed! Link Mil Gaya: {p.url}")
                         
-                        # DrissionPage ke original headers nikalne ki koshish
                         req_headers = {}
                         if hasattr(p, 'request') and hasattr(p.request, 'headers'):
                             req_headers = p.request.headers
                         
-                        # File 1 wale Hardcoded Bhalocast Headers apply kar rahe hain
                         data = {
                             "url": p.url,
                             "ua": USER_AGENT,
@@ -205,22 +196,20 @@ def calculate_sleep_time(url):
         pass
     return DEFAULT_SLEEP
 
-#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 def start_stream(data):
-    # File 1 wali format me Headers pass ho rahe hain FFmpeg ko
     headers_cmd = f"Referer: {data['referer']}\r\nUser-Agent: {data['ua']}\r\n"
     if data.get('cookie'):
         headers_cmd += f"Cookie: {data['cookie']}\r\n"
     if data.get('origin'):
         headers_cmd += f"Origin: {data['origin']}\r\n"
     
-    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p ULTRA-LOW BANDWIDTH)...")
+    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
     cmd = [
         "ffmpeg", "-re",
         "-loglevel", "error", 
         "-fflags", "+genpts",  
         "-headers", headers_cmd,
-        "-user_agent", data['ua'],  # Explicit user agent
+        "-user_agent", data['ua'],
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
         "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k", 
@@ -234,40 +223,31 @@ def start_stream(data):
 
 def main():
     print("========================================")
-    print("   🚀 ULTIMATE ALL-IN-ONE STREAMER (DrissionPage Edition)")
-    print(f"   📡 SELECTED SERVER ID: {STREAM_ID}")
+    print("   🚀 ULTIMATE ALL-IN-ONE STREAMER (DrissionPage)")
+    print(f"   📡 OK.RU SERVER ID: {STREAM_ID}")
+    print(f"   🎥 BHALOCAST CHANNEL: {SOURCE_CHANNEL}")
     print("========================================")
     
     start_time = time.time()
     RESTART_TIME_LIMIT = (5 * 60 * 60) + (45 * 60) # 5h 45m
     end_time = start_time + (6 * 60 * 60)
     
-    # ====================================================
-    # 🔥 CASE 2: RAW FFMPEG COMMAND OVERRIDE LOGIC
-    # ====================================================
     if MANUAL_FFMPEG_CMD:
         print("\n[🎯] ⚡ RAW FFMPEG COMMAND OVERRIDE ACTIVATED ⚡")
-        print("Bot apni link-finding logic band kar raha hai aur direct aapki command chala raha hai...")
-        
         next_run_triggered = False
         while time.time() < end_time:
             if (time.time() - start_time) > RESTART_TIME_LIMIT and not next_run_triggered:
                 trigger_next_run()
                 next_run_triggered = True
 
-            print(f"\n[🎬] Executing Full Command: \n{MANUAL_FFMPEG_CMD[:150]}... (truncated for display)")
-            
             try:
                 current_process = subprocess.Popen(MANUAL_FFMPEG_CMD, shell=True)
                 current_process.wait() 
             except Exception as e:
                 print(f"[💥] Command Error: {e}")
                 
-            print("\n[⚠️] Command rukk gayi ya stream crash ho gayi. 10 second baad dobara try kar raha hoon...")
             time.sleep(10)
-            
         return 
-    # ====================================================
 
     current_process = None
     next_run_triggered = False
@@ -288,10 +268,8 @@ def main():
     while time.time() < end_time:
         try:
             if not data:
-                print("\n[🔄] Link lene ja raha hoon...")
                 data = get_link_with_headers()
                 if not data:
-                    print("\n[❌] Link nahi mila. 1 minute baad dobara koshish hogi...")
                     time.sleep(60)
                     continue
 
@@ -317,26 +295,20 @@ def main():
                     next_run_triggered = True 
                     
                 if current_process.poll() is not None:
-                    exit_code = current_process.poll()
-                    print(f"\n[⚠️] FFmpeg Stream Crashed! (Exit Code: {exit_code})")
                     crashed = True
                     break 
             
             if not is_manual_mode and not crashed:
-                print("\n[🕵️‍♂️] PRE-FETCH MODE: Background mein naya link la raha hoon...")
                 new_data = get_link_with_headers()
                 if new_data:
-                    print("\n[⚡] NAYA LINK READY! Millisecond swap kar raha hoon...")
                     data = new_data 
                 else:
-                    print("\n[⚠️] Pre-fetch fail! Purani stream ko natural crash hone tak chalne do...")
                     current_process.wait() 
                     data = None 
             elif crashed and not is_manual_mode:
                 data = None 
 
         except Exception:
-            print(f"\n[💥] MAIN LOOP ERROR:")
             print(traceback.format_exc())
             time.sleep(60)
 
