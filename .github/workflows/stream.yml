@@ -24,16 +24,16 @@ on:
           - 'penguin_ptvskpr'
           - 'custom_url'
         default: 'willowextra'
-      target_url:
-        description: 'Custom URL (Agar upar Custom select kiya ho)'
+      stop_time:
+        description: 'Bot kyare band karvo che? (HH:MM format, e.g. 23:30)'
         required: false
         default: ''
-      stream_key:
-        description: 'OK.ru Stream Key (Optional)'
+      target_url:
+        description: 'Custom URL'
         required: false
-        default: '14136719122027_13152308497003_hnlk6em2e4'
+        default: ''
       proxy_ip:
-        description: 'Proxy IP Address (For FFmpeg only)'
+        description: 'Proxy IP Address'
         required: true
         default: '31.59.20.176'
       proxy_port:
@@ -48,18 +48,6 @@ on:
         description: 'Proxy Password'
         required: true
         default: '5ex21twl07tx'
-      manual_m3u8:
-        description: '(OPTIONAL) Direct m3u8 Link'
-        required: false
-        default: ''
-      manual_referer:
-        description: '(OPTIONAL) Referer for Direct Link'
-        required: false
-        default: ''
-      manual_origin:
-        description: '(OPTIONAL) Origin for Direct Link'
-        required: false
-        default: ''
       manual_ffmpeg_cmd:
         description: '(CASE 2) Paste Full FFmpeg Command here'
         required: false
@@ -68,7 +56,7 @@ on:
 jobs:
   run-stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # 6 Hours Limit
+    timeout-minutes: 360
 
     steps:
     - name: Checkout Code
@@ -98,17 +86,131 @@ jobs:
         GITHUB_REF_NAME: ${{ github.ref_name }}
         STREAM_ID: ${{ inputs.stream_id }}
         SOURCE_CHANNEL: ${{ inputs.source_channel }}
+        STOP_TIME: ${{ inputs.stop_time }}
         TARGET_URL: ${{ inputs.target_url }}
-        STREAM_KEY: ${{ inputs.stream_key }}
         PROXY_IP: ${{ inputs.proxy_ip }}
         PROXY_PORT: ${{ inputs.proxy_port }}
         PROXY_USER: ${{ inputs.proxy_user }}
         PROXY_PASS: ${{ inputs.proxy_pass }}
-        MANUAL_M3U8: ${{ inputs.manual_m3u8 }}
-        MANUAL_REFERER: ${{ inputs.manual_referer }}
-        MANUAL_ORIGIN: ${{ inputs.manual_origin }}
         MANUAL_FFMPEG_CMD: ${{ inputs.manual_ffmpeg_cmd }}
       run: xvfb-run python -u final_bot.py
+
+
+
+
+
+
+# name: 24/7 Cricket Streamer
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       stream_id:
+#         description: 'OK.ru Server (Stream Key 1, 2, 3, 4)'
+#         required: true
+#         type: choice
+#         options:
+#           - '1'
+#           - '2'
+#           - '3'
+#           - '4'
+#         default: '1'
+#       source_channel:
+#         description: 'Select Match Link (Bhalocast)'
+#         required: true
+#         type: choice
+#         options:
+#           - 'willowextra'
+#           - 'ptvskpr'
+#           - 'star1kibich'
+#           - 'penguin_ptvskpr'
+#           - 'custom_url'
+#         default: 'willowextra'
+#       target_url:
+#         description: 'Custom URL (Agar upar Custom select kiya ho)'
+#         required: false
+#         default: ''
+#       stream_key:
+#         description: 'OK.ru Stream Key (Optional)'
+#         required: false
+#         default: '14136719122027_13152308497003_hnlk6em2e4'
+#       proxy_ip:
+#         description: 'Proxy IP Address (For FFmpeg only)'
+#         required: true
+#         default: '31.59.20.176'
+#       proxy_port:
+#         description: 'Proxy Port'
+#         required: true
+#         default: '6754'
+#       proxy_user:
+#         description: 'Proxy Username'
+#         required: true
+#         default: 'fzqdczzq'
+#       proxy_pass:
+#         description: 'Proxy Password'
+#         required: true
+#         default: '5ex21twl07tx'
+#       manual_m3u8:
+#         description: '(OPTIONAL) Direct m3u8 Link'
+#         required: false
+#         default: ''
+#       manual_referer:
+#         description: '(OPTIONAL) Referer for Direct Link'
+#         required: false
+#         default: ''
+#       manual_origin:
+#         description: '(OPTIONAL) Origin for Direct Link'
+#         required: false
+#         default: ''
+#       manual_ffmpeg_cmd:
+#         description: '(CASE 2) Paste Full FFmpeg Command here'
+#         required: false
+#         default: ''
+
+# jobs:
+#   run-stream:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 360 # 6 Hours Limit
+
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v3
+
+#     - name: Python Install Karna
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: '3.10'
+
+#     - name: Install System Tools & Real Google Chrome
+#       run: |
+#         sudo apt-get update
+#         sudo apt-get install -y ffmpeg xvfb
+#         wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+#         sudo apt install -y ./google-chrome-stable_current_amd64.deb
+
+#     - name: Install Python Requirements
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install DrissionPage requests
+
+#     - name: Start The Bot with Virtual Screen
+#       env:
+#         GH_PAT: ${{ secrets.GH_PAT }}
+#         GITHUB_REPOSITORY: ${{ github.repository }}
+#         GITHUB_REF_NAME: ${{ github.ref_name }}
+#         STREAM_ID: ${{ inputs.stream_id }}
+#         SOURCE_CHANNEL: ${{ inputs.source_channel }}
+#         TARGET_URL: ${{ inputs.target_url }}
+#         STREAM_KEY: ${{ inputs.stream_key }}
+#         PROXY_IP: ${{ inputs.proxy_ip }}
+#         PROXY_PORT: ${{ inputs.proxy_port }}
+#         PROXY_USER: ${{ inputs.proxy_user }}
+#         PROXY_PASS: ${{ inputs.proxy_pass }}
+#         MANUAL_M3U8: ${{ inputs.manual_m3u8 }}
+#         MANUAL_REFERER: ${{ inputs.manual_referer }}
+#         MANUAL_ORIGIN: ${{ inputs.manual_origin }}
+#         MANUAL_FFMPEG_CMD: ${{ inputs.manual_ffmpeg_cmd }}
+#       run: xvfb-run python -u final_bot.py
 
 
 
