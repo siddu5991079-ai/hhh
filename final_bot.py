@@ -20,7 +20,7 @@ MULTI_KEYS = {
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
 
-# --- STOP TIME LOGIC ---
+# --- STOP TIME LOGIC (AM/PM) ---
 STOP_TIME_STR = os.environ.get('STOP_TIME', '').strip()
 
 # --- ERROR TRACKING LOGIC ---
@@ -53,18 +53,83 @@ PKT = timezone(timedelta(hours=5))
 # ==========================================
 
 def check_stop_time():
-    """Tapasvi ke sho band karvano samay thai gayo che?"""
+    """Tapasvi ke AM/PM ke hisaab se stop karne ka time aa gaya hai?"""
     if not STOP_TIME_STR:
         return False
     
     try:
         now = datetime.now(PKT)
-        stop_hour, stop_min = map(int, STOP_TIME_STR.split(':'))
-        if now.hour > stop_hour or (now.hour == stop_hour and now.minute >= stop_min):
+        time_str = STOP_TIME_STR.lower().replace(" ", "") # E.g., '1 pm' becomes '1pm'
+        
+        is_pm = 'pm' in time_str
+        is_am = 'am' in time_str
+        
+        # Sirf numbers extract karo (e.g., '12pm' -> '12')
+        hour_str = ''.join(filter(str.isdigit, time_str))
+        if not hour_str:
+            return False
+            
+        stop_hour = int(hour_str)
+        
+        # 12-hour AM/PM ko 24-hour mein convert karo
+        if is_pm and stop_hour != 12:
+            stop_hour += 12
+        elif is_am and stop_hour == 12:
+            stop_hour = 0
+            
+        # Agar current PKT hour us target hour se match kar jaye
+        # (Jaise hi target ghanta shuru hoga, bot stop ho jayega)
+        if now.hour == stop_hour:
             return True
-    except Exception:
-        pass
+            
+    except Exception as e:
+        print(f"[⚠️] Time check error: {e}")
+        
     return False
+
+def trigger_next_run():
+    print("\n" + "="*50)
+    print(" ⏰ AUTO-RESTART TRIGGER ACTIVATED ⏰")
+    print("="*50)
+    
+    token = os.environ.get('GH_PAT')
+    repo = os.environ.get('GITHUB_REPOSITORY') 
+    branch = os.environ.get('GITHUB_REF_NAME', 'main')
+    
+    if not token or not repo:
+        print("[❌] GH_PAT ya Repo Name nahi mila! Auto-Restart Fail ho gaya.")
+        return
+
+    url = f"https://api.github.com/repos/{repo}/actions/workflows/stream.yml/dispatches"
+    
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": f"token {token}"
+    }
+    
+    data = {
+        "ref": branch,
+        "inputs": {
+            "stream_id": STREAM_ID,
+            "source_channel": SOURCE_CHANNEL,
+            "target_url": os.environ.get('TARGET_URL', ''),
+            "stream_key": STREAM_KEY,
+            "proxy_ip": PROXY_IP,
+            "proxy_port": PROXY_PORT,
+            "proxy_user": PROXY_USER,
+            "proxy_pass": PROXY_PASS,
+            "manual_ffmpeg_cmd": os.environ.get('MANUAL_FFMPEG_CMD', '')
+        }
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 204:
+            print(f"[✅] SUCCESS! Nayi 'stream.yml' background mein start ho gayi hai!")
+        else:
+            print(f"[❌] FAILED to start new bot. Status: {response.status_code}")
+    except Exception as e:
+        print(f"[💥] API Error: {e}")
 
 def get_link_with_headers():
     print(f"\n[🔍] Scanning Target: {TARGET_WEBSITE}")
@@ -124,19 +189,26 @@ def start_stream(data):
 def main():
     global consecutive_error_count, last_error_msg
     
-    print("🚀 BOT STARTED")
+    print("========================================")
+    print("   🚀 ULTIMATE ALL-IN-ONE STREAMER (DrissionPage)")
+    print(f"   📡 OK.RU SERVER ID: {STREAM_ID}")
+    print(f"   🎥 BHALOCAST CHANNEL: {SOURCE_CHANNEL}")
     if STOP_TIME_STR:
-        print(f"⏰ Scheduled Stop Time: {STOP_TIME_STR} PKT")
+        print(f"   ⏰ SCHEDULED STOP TIME: {STOP_TIME_STR.upper()} (PKT)")
+    print("========================================")
 
     start_time = time.time()
     end_time = start_time + (6 * 60 * 60) # 6 hours max
+    RESTART_TIME_LIMIT = (5 * 60 * 60) + (45 * 60) # 5h 45m
+    next_run_triggered = False
+    
     current_process = None
     data = None
 
     while time.time() < end_time:
         # 1. Check Stop Time
         if check_stop_time():
-            print("\n🛑 STOP TIME REACHED. Bot band thai rahyu che.")
+            print(f"\n🛑 TIME OVER! Pakistan Time ke mutabiq {STOP_TIME_STR.upper()} baj gaye hain. Bot stop kar raha hoon.")
             if current_process: current_process.terminate()
             break
 
@@ -149,7 +221,7 @@ def main():
 
             if current_process: current_process.terminate()
             current_process = start_stream(data)
-            print("\n✅ Stream Live!")
+            print("\n✅ Stream Live OK.ru Par!")
             
             # Reset error count on success
             consecutive_error_count = 0
@@ -160,15 +232,21 @@ def main():
             while waited < 600: # Check every 10 mins
                 time.sleep(10)
                 waited += 10
+                
+                # Check auto-restart trigger limit
+                if (time.time() - start_time) > RESTART_TIME_LIMIT and not next_run_triggered:
+                    trigger_next_run()
+                    next_run_triggered = True
+                
                 if check_stop_time() or current_process.poll() is not None:
                     break
             
             if current_process.poll() is not None:
-                raise Exception("FFmpeg Crash thai gayo")
+                raise Exception("FFmpeg Connection tut gaya ya crash ho gaya")
 
         except Exception as e:
             err_str = str(e)
-            print(f"\n⚠️ Error avyo: {err_str}")
+            print(f"\n⚠️ Error Aaya: {err_str}")
             
             # 2. Consecutive Error Logic
             if err_str == last_error_msg:
@@ -177,10 +255,10 @@ def main():
                 consecutive_error_count = 1
                 last_error_msg = err_str
 
-            print(f"🔄 Consecutive Errors: {consecutive_error_count}/3")
+            print(f"🔄 Lagatar (Consecutive) Errors: {consecutive_error_count}/3")
             
             if consecutive_error_count >= 3:
-                print("\n🚨 SAME ERROR 3 VAAR AVYO. Bot band thai rahyu che.")
+                print("\n🚨 3 BAAR SAME ERROR AAYA HAI! Bot completely stop kiya ja raha hai.")
                 if current_process: current_process.terminate()
                 break
                 
@@ -188,6 +266,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    
 
 
     
