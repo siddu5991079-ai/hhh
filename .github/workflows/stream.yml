@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       stream_id:
-        description: 'Select Stream Server (1, 2, or 3)'
+        description: 'OK.ru Server (Stream Key 1, 2, 3, 4)'
         required: true
         type: choice
         options:
@@ -13,12 +13,23 @@ on:
           - '3'
           - '4'
         default: '1'
-      target_url:
-        description: 'Target Video Link (Auto Mode)'
+      source_channel:
+        description: 'Select Match Link (Bhalocast)'
         required: true
-        default: 'https://dadocric.st/player.php?id=starsp3'
+        type: choice
+        options:
+          - 'willowextra'
+          - 'ptvskpr'
+          - 'star1kibich'
+          - 'penguin_ptvskpr'
+          - 'custom_url'
+        default: 'willowextra'
+      target_url:
+        description: 'Custom URL (Agar upar Custom select kiya ho)'
+        required: false
+        default: ''
       stream_key:
-        description: 'OK.ru Stream Key (Optional if ID 1, 2, 3 used)'
+        description: 'OK.ru Stream Key (Optional)'
         required: false
         default: '14136719122027_13152308497003_hnlk6em2e4'
       proxy_ip:
@@ -78,6 +89,7 @@ jobs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_REF_NAME: ${{ github.ref_name }}
         STREAM_ID: ${{ inputs.stream_id }}
+        SOURCE_CHANNEL: ${{ inputs.source_channel }}
         TARGET_URL: ${{ inputs.target_url }}
         STREAM_KEY: ${{ inputs.stream_key }}
         PROXY_IP: ${{ inputs.proxy_ip }}
@@ -89,7 +101,6 @@ jobs:
         MANUAL_ORIGIN: ${{ inputs.manual_origin }}
         MANUAL_FFMPEG_CMD: ${{ inputs.manual_ffmpeg_cmd }}
       run: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python -u final_bot.py
-
 
 
 
