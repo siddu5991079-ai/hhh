@@ -20,8 +20,14 @@ MULTI_KEYS = {
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
 
-SOURCE_CHANNEL = os.environ.get('SOURCE_CHANNEL', 'willowextra')
+# --- STOP TIME LOGIC ---
+STOP_TIME_STR = os.environ.get('STOP_TIME', '').strip()
 
+# --- ERROR TRACKING LOGIC ---
+consecutive_error_count = 0
+last_error_msg = ""
+
+SOURCE_CHANNEL = os.environ.get('SOURCE_CHANNEL', 'willowextra')
 BHALOCAST_LINKS = {
     'willowextra': "https://bhalocast.com/atoplay.php?v=wextres&hello=m1lko&expires=123456",
     'ptvskpr': "https://bhalocast.com/atoplay.php?v=ptvskpr&hello=m1lko&expires=123456",
@@ -34,115 +40,56 @@ if SOURCE_CHANNEL == 'custom_url':
 else:
     TARGET_WEBSITE = BHALOCAST_LINKS.get(SOURCE_CHANNEL, BHALOCAST_LINKS['willowextra'])
 
-# File 1 Hardcoded Headers
 REFERER = "https://bhalocast.com/"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 
-# (Proxy variables are here but NOT used in DrissionPage anymore, to avoid Cloudflare blocks)
 PROXY_IP = os.environ.get('PROXY_IP', '31.59.20.176')
 PROXY_PORT = os.environ.get('PROXY_PORT', '6754')
 PROXY_USER = os.environ.get('PROXY_USER', 'fzqdczzq')
 PROXY_PASS = os.environ.get('PROXY_PASS', '5ex21twl07tx')
 PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
 
-MANUAL_M3U8 = os.environ.get('MANUAL_M3U8', '').strip()
-MANUAL_REFERER = os.environ.get('MANUAL_REFERER', '').strip()
-MANUAL_ORIGIN = os.environ.get('MANUAL_ORIGIN', '').strip()
-MANUAL_FFMPEG_CMD = os.environ.get('MANUAL_FFMPEG_CMD', '').strip()
-
-DEFAULT_SLEEP = 45 * 60 
 PKT = timezone(timedelta(hours=5))
 # ==========================================
 
-def trigger_next_run():
-    print("\n" + "="*50)
-    print(" ⏰ AUTO-RESTART TRIGGER ACTIVATED ⏰")
-    print("="*50)
-    
-    token = os.environ.get('GH_PAT')
-    repo = os.environ.get('GITHUB_REPOSITORY') 
-    branch = os.environ.get('GITHUB_REF_NAME', 'main')
-    
-    if not token or not repo:
-        print("[❌] GH_PAT ya Repo Name nahi mila! Auto-Restart Fail ho gaya.")
-        return
-
-    url = f"https://api.github.com/repos/{repo}/actions/workflows/stream.yml/dispatches"
-    
-    headers = {
-        "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"token {token}"
-    }
-    
-    data = {
-        "ref": branch,
-        "inputs": {
-            "stream_id": STREAM_ID,
-            "source_channel": SOURCE_CHANNEL,
-            "target_url": os.environ.get('TARGET_URL', ''),
-            "stream_key": STREAM_KEY,
-            "proxy_ip": PROXY_IP,
-            "proxy_port": PROXY_PORT,
-            "proxy_user": PROXY_USER,
-            "proxy_pass": PROXY_PASS,
-            "manual_m3u8": MANUAL_M3U8,
-            "manual_referer": MANUAL_REFERER,
-            "manual_origin": MANUAL_ORIGIN,
-            "manual_ffmpeg_cmd": MANUAL_FFMPEG_CMD
-        }
-    }
+def check_stop_time():
+    """Tapasvi ke sho band karvano samay thai gayo che?"""
+    if not STOP_TIME_STR:
+        return False
     
     try:
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code == 204:
-            print(f"[✅] SUCCESS! Nayi 'stream.yml' background mein start ho gayi hai!")
-        else:
-            print(f"[❌] FAILED to start new bot. Status: {response.status_code}")
-    except Exception as e:
-        print(f"[💥] API Error: {e}")
+        now = datetime.now(PKT)
+        stop_hour, stop_min = map(int, STOP_TIME_STR.split(':'))
+        if now.hour > stop_hour or (now.hour == stop_hour and now.minute >= stop_min):
+            return True
+    except Exception:
+        pass
+    return False
 
 def get_link_with_headers():
-    print(f"\n========================================")
-    print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
-    print(f"[⚠️] [NOTE] Proxy is DISABLED for DrissionPage to bypass Cloudflare smoothly.")
-    
-    # 🚨 EXACT OPTIONS FROM YOUR WORKING TEST FILE 🚨
+    print(f"\n[🔍] Scanning Target: {TARGET_WEBSITE}")
     opts = ChromiumOptions()
     opts.set_argument('--autoplay-policy=no-user-gesture-required')
     opts.set_argument('--no-sandbox')
     opts.set_argument('--disable-gpu')
     opts.set_argument('--disable-dev-shm-usage')
     opts.set_argument('--mute-audio')
-    # NO PROXY SET HERE!
 
     page = None
     data = None
-
     try:
-        print(f"[⚙️] [STEP 3] Chromium Browser start ho raha hai (DrissionPage)...")
         page = ChromiumPage(addr_or_opts=opts)
-        
         page.listen.start('m3u8')
-        
-        print(f"[🌐] [STEP 5] Website open kar raha hoon...")
         page.get(TARGET_WEBSITE)
         
-        print("Cloudflare Turnstile should solve automatically in real Chrome...")
-        print("Waiting up to 90 seconds for m3u8...")
         start_time = time.time()
-        
-        # EXACT LOOP FROM YOUR TEST FILE
         while time.time() - start_time < 90:
             for packet in page.listen.steps(count=1, timeout=3, gap=1):
                 if packet:
                     items = packet if isinstance(packet, list) else [packet]
                     for p in items:
-                        print(f"\n[FOUND] 🎉 Link Mil Gaya: {p.url}")
-                        
-                        req_headers = {}
-                        if hasattr(p, 'request') and hasattr(p.request, 'headers'):
-                            req_headers = p.request.headers
-                        
+                        print(f"\n[FOUND] 🎉 M3U8: {p.url}")
+                        req_headers = p.request.headers if hasattr(p, 'request') else {}
                         data = {
                             "url": p.url,
                             "ua": USER_AGENT,
@@ -153,116 +100,46 @@ def get_link_with_headers():
                         break
                 if data: break
             if data: break
-            
-            elapsed = int(time.time() - start_time)
-            if elapsed % 15 == 0 and elapsed > 0:
-                print(f"  {elapsed}s elapsed...")
-
-        if not data:
-            print("\n[🚨] WARNING: .m3u8 link nahi mila! WAF ne block kiya ya wait time khatam.")
-            
     except Exception as e:
-        print(f"\n[💥] PYTHON SCRIPT ERROR (Browser Crash):")
-        print(traceback.format_exc())
+        print(f"[💥] Browser Error: {e}")
     finally:
         if page:
-            print("[🧹] [STEP 8] Browser band kiya ja raha hai...")
-            page.listen.stop()
             page.quit()
-    
     return data
-
-def calculate_sleep_time(url):
-    try:
-        parsed = urllib.parse.urlparse(url)
-        params = urllib.parse.parse_qs(parsed.query)
-        expiry_ts = None
-        
-        if 'expires' in params: expiry_ts = int(params['expires'][0])
-        elif 'e' in params: expiry_ts = int(params['e'][0])
-            
-        if expiry_ts:
-            expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
-            wake_up_dt = expiry_dt - timedelta(minutes=5)
-            now_dt = datetime.now(PKT)
-            seconds = (wake_up_dt - now_dt).total_seconds()
-            
-            print(f"[⏰] Asli Link Expiry Time: {expiry_dt.strftime('%I:%M %p')} PKT")
-            if seconds > 0: return seconds
-            else: return 60
-    except Exception:
-        pass
-    return DEFAULT_SLEEP
 
 def start_stream(data):
     headers_cmd = f"Referer: {data['referer']}\r\nUser-Agent: {data['ua']}\r\n"
-    if data.get('cookie'):
-        headers_cmd += f"Cookie: {data['cookie']}\r\n"
-    if data.get('origin'):
-        headers_cmd += f"Origin: {data['origin']}\r\n"
+    if data.get('cookie'): headers_cmd += f"Cookie: {data['cookie']}\r\n"
     
-    print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
     cmd = [
-        "ffmpeg", "-re",
-        "-loglevel", "error", 
-        "-fflags", "+genpts",  
-        "-headers", headers_cmd,
-        "-user_agent", data['ua'],
-        "-i", data['url'],
-        "-c:v", "libx264", "-preset", "ultrafast",
-        "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k", 
-        "-vf", "scale=640:360", "-r", "20",                     
-        "-c:a", "aac", "-b:a", "32k", "-ar", "44100",            
-        "-async", "1",         
+        "ffmpeg", "-re", "-loglevel", "error", "-fflags", "+genpts",
+        "-headers", headers_cmd, "-user_agent", data['ua'],
+        "-i", data['url'], "-c:v", "libx264", "-preset", "ultrafast",
+        "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k",
+        "-vf", "scale=640:360", "-r", "20", "-c:a", "aac", "-b:a", "32k",
         "-f", "flv", RTMP_URL
     ]
-    print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Slow Internet Optimized)")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
 
 def main():
-    print("========================================")
-    print("   🚀 ULTIMATE ALL-IN-ONE STREAMER (DrissionPage)")
-    print(f"   📡 OK.RU SERVER ID: {STREAM_ID}")
-    print(f"   🎥 BHALOCAST CHANNEL: {SOURCE_CHANNEL}")
-    print("========================================")
+    global consecutive_error_count, last_error_msg
     
+    print("🚀 BOT STARTED")
+    if STOP_TIME_STR:
+        print(f"⏰ Scheduled Stop Time: {STOP_TIME_STR} PKT")
+
     start_time = time.time()
-    RESTART_TIME_LIMIT = (5 * 60 * 60) + (45 * 60) # 5h 45m
-    end_time = start_time + (6 * 60 * 60)
-    
-    if MANUAL_FFMPEG_CMD:
-        print("\n[🎯] ⚡ RAW FFMPEG COMMAND OVERRIDE ACTIVATED ⚡")
-        next_run_triggered = False
-        while time.time() < end_time:
-            if (time.time() - start_time) > RESTART_TIME_LIMIT and not next_run_triggered:
-                trigger_next_run()
-                next_run_triggered = True
-
-            try:
-                current_process = subprocess.Popen(MANUAL_FFMPEG_CMD, shell=True)
-                current_process.wait() 
-            except Exception as e:
-                print(f"[💥] Command Error: {e}")
-                
-            time.sleep(10)
-        return 
-
+    end_time = start_time + (6 * 60 * 60) # 6 hours max
     current_process = None
-    next_run_triggered = False
-    is_manual_mode = bool(MANUAL_M3U8)
-
-    if is_manual_mode:
-        data = {
-            "url": MANUAL_M3U8,
-            "referer": MANUAL_REFERER if MANUAL_REFERER else REFERER,
-            "origin": MANUAL_ORIGIN,
-            "ua": USER_AGENT,
-            "cookie": ""
-        }
-    else:
-        data = get_link_with_headers()
+    data = None
 
     while time.time() < end_time:
+        # 1. Check Stop Time
+        if check_stop_time():
+            print("\n🛑 STOP TIME REACHED. Bot band thai rahyu che.")
+            if current_process: current_process.terminate()
+            break
+
         try:
             if not data:
                 data = get_link_with_headers()
@@ -272,45 +149,366 @@ def main():
 
             if current_process: current_process.terminate()
             current_process = start_stream(data)
-            print("\n[🚀] SUCCESS! Video feed OK.ru par live hai!")
+            print("\n✅ Stream Live!")
             
-            if is_manual_mode:
-                sleep_seconds = 10 * 60 * 60
-            else:
-                sleep_seconds = calculate_sleep_time(data['url'])
-                print(f"[zzz] AUTO MODE: Bot {int(sleep_seconds/60)} mins rest karega...")
-            
+            # Reset error count on success
+            consecutive_error_count = 0
+            last_error_msg = ""
+
+            # Waiting loop
             waited = 0
-            crashed = False
-            
-            while waited < sleep_seconds:
+            while waited < 600: # Check every 10 mins
                 time.sleep(10)
                 waited += 10
-                
-                if (time.time() - start_time) > RESTART_TIME_LIMIT and not next_run_triggered:
-                    trigger_next_run()
-                    next_run_triggered = True 
-                    
-                if current_process.poll() is not None:
-                    crashed = True
-                    break 
+                if check_stop_time() or current_process.poll() is not None:
+                    break
             
-            if not is_manual_mode and not crashed:
-                new_data = get_link_with_headers()
-                if new_data:
-                    data = new_data 
-                else:
-                    current_process.wait() 
-                    data = None 
-            elif crashed and not is_manual_mode:
-                data = None 
+            if current_process.poll() is not None:
+                raise Exception("FFmpeg Crash thai gayo")
 
-        except Exception:
-            print(traceback.format_exc())
-            time.sleep(60)
+        except Exception as e:
+            err_str = str(e)
+            print(f"\n⚠️ Error avyo: {err_str}")
+            
+            # 2. Consecutive Error Logic
+            if err_str == last_error_msg:
+                consecutive_error_count += 1
+            else:
+                consecutive_error_count = 1
+                last_error_msg = err_str
+
+            print(f"🔄 Consecutive Errors: {consecutive_error_count}/3")
+            
+            if consecutive_error_count >= 3:
+                print("\n🚨 SAME ERROR 3 VAAR AVYO. Bot band thai rahyu che.")
+                if current_process: current_process.terminate()
+                break
+                
+            time.sleep(30)
 
 if __name__ == "__main__":
     main()
+
+
+    
+
+
+
+
+
+# import os
+# import time
+# import subprocess
+# import urllib.parse
+# import traceback
+# import requests
+# from datetime import datetime, timezone, timedelta
+# from DrissionPage import ChromiumPage, ChromiumOptions
+
+# # ==========================================
+# # ⚙️ MAIN SETTINGS
+# # ==========================================
+# STREAM_ID = str(os.environ.get('STREAM_ID', '1'))
+# MULTI_KEYS = {
+#     '1': os.environ.get('STREAM_KEY', '14136719122027_13152308497003_hnlk6em2e4'), 
+#     '2': '14136743566955_13152356600427_vmdsemtmo4', 
+#     '3': '14136762048107_13152392710763_22fobqpsdi',  
+#     '4': '14136778563179_13152426265195_c5quhoj2vm'
+# }
+# STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
+# RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
+
+# SOURCE_CHANNEL = os.environ.get('SOURCE_CHANNEL', 'willowextra')
+
+# BHALOCAST_LINKS = {
+#     'willowextra': "https://bhalocast.com/atoplay.php?v=wextres&hello=m1lko&expires=123456",
+#     'ptvskpr': "https://bhalocast.com/atoplay.php?v=ptvskpr&hello=m1lko&expires=123456",
+#     'star1kibich': "https://bhalocast.com/atoplay.php?v=star1kibich&hello=m1lko&expires=123456",
+#     'penguin_ptvskpr': "https://bhalocast.com/penguin.php?v=ptvskpr&hello=m1lko&expires=123456"
+# }
+
+# if SOURCE_CHANNEL == 'custom_url':
+#     TARGET_WEBSITE = os.environ.get('TARGET_URL', '')
+# else:
+#     TARGET_WEBSITE = BHALOCAST_LINKS.get(SOURCE_CHANNEL, BHALOCAST_LINKS['willowextra'])
+
+# # File 1 Hardcoded Headers
+# REFERER = "https://bhalocast.com/"
+# USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+
+# # (Proxy variables are here but NOT used in DrissionPage anymore, to avoid Cloudflare blocks)
+# PROXY_IP = os.environ.get('PROXY_IP', '31.59.20.176')
+# PROXY_PORT = os.environ.get('PROXY_PORT', '6754')
+# PROXY_USER = os.environ.get('PROXY_USER', 'fzqdczzq')
+# PROXY_PASS = os.environ.get('PROXY_PASS', '5ex21twl07tx')
+# PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
+
+# MANUAL_M3U8 = os.environ.get('MANUAL_M3U8', '').strip()
+# MANUAL_REFERER = os.environ.get('MANUAL_REFERER', '').strip()
+# MANUAL_ORIGIN = os.environ.get('MANUAL_ORIGIN', '').strip()
+# MANUAL_FFMPEG_CMD = os.environ.get('MANUAL_FFMPEG_CMD', '').strip()
+
+# DEFAULT_SLEEP = 45 * 60 
+# PKT = timezone(timedelta(hours=5))
+# # ==========================================
+
+# def trigger_next_run():
+#     print("\n" + "="*50)
+#     print(" ⏰ AUTO-RESTART TRIGGER ACTIVATED ⏰")
+#     print("="*50)
+    
+#     token = os.environ.get('GH_PAT')
+#     repo = os.environ.get('GITHUB_REPOSITORY') 
+#     branch = os.environ.get('GITHUB_REF_NAME', 'main')
+    
+#     if not token or not repo:
+#         print("[❌] GH_PAT ya Repo Name nahi mila! Auto-Restart Fail ho gaya.")
+#         return
+
+#     url = f"https://api.github.com/repos/{repo}/actions/workflows/stream.yml/dispatches"
+    
+#     headers = {
+#         "Accept": "application/vnd.github.v3+json",
+#         "Authorization": f"token {token}"
+#     }
+    
+#     data = {
+#         "ref": branch,
+#         "inputs": {
+#             "stream_id": STREAM_ID,
+#             "source_channel": SOURCE_CHANNEL,
+#             "target_url": os.environ.get('TARGET_URL', ''),
+#             "stream_key": STREAM_KEY,
+#             "proxy_ip": PROXY_IP,
+#             "proxy_port": PROXY_PORT,
+#             "proxy_user": PROXY_USER,
+#             "proxy_pass": PROXY_PASS,
+#             "manual_m3u8": MANUAL_M3U8,
+#             "manual_referer": MANUAL_REFERER,
+#             "manual_origin": MANUAL_ORIGIN,
+#             "manual_ffmpeg_cmd": MANUAL_FFMPEG_CMD
+#         }
+#     }
+    
+#     try:
+#         response = requests.post(url, headers=headers, json=data)
+#         if response.status_code == 204:
+#             print(f"[✅] SUCCESS! Nayi 'stream.yml' background mein start ho gayi hai!")
+#         else:
+#             print(f"[❌] FAILED to start new bot. Status: {response.status_code}")
+#     except Exception as e:
+#         print(f"[💥] API Error: {e}")
+
+# def get_link_with_headers():
+#     print(f"\n========================================")
+#     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
+#     print(f"[⚠️] [NOTE] Proxy is DISABLED for DrissionPage to bypass Cloudflare smoothly.")
+    
+#     # 🚨 EXACT OPTIONS FROM YOUR WORKING TEST FILE 🚨
+#     opts = ChromiumOptions()
+#     opts.set_argument('--autoplay-policy=no-user-gesture-required')
+#     opts.set_argument('--no-sandbox')
+#     opts.set_argument('--disable-gpu')
+#     opts.set_argument('--disable-dev-shm-usage')
+#     opts.set_argument('--mute-audio')
+#     # NO PROXY SET HERE!
+
+#     page = None
+#     data = None
+
+#     try:
+#         print(f"[⚙️] [STEP 3] Chromium Browser start ho raha hai (DrissionPage)...")
+#         page = ChromiumPage(addr_or_opts=opts)
+        
+#         page.listen.start('m3u8')
+        
+#         print(f"[🌐] [STEP 5] Website open kar raha hoon...")
+#         page.get(TARGET_WEBSITE)
+        
+#         print("Cloudflare Turnstile should solve automatically in real Chrome...")
+#         print("Waiting up to 90 seconds for m3u8...")
+#         start_time = time.time()
+        
+#         # EXACT LOOP FROM YOUR TEST FILE
+#         while time.time() - start_time < 90:
+#             for packet in page.listen.steps(count=1, timeout=3, gap=1):
+#                 if packet:
+#                     items = packet if isinstance(packet, list) else [packet]
+#                     for p in items:
+#                         print(f"\n[FOUND] 🎉 Link Mil Gaya: {p.url}")
+                        
+#                         req_headers = {}
+#                         if hasattr(p, 'request') and hasattr(p.request, 'headers'):
+#                             req_headers = p.request.headers
+                        
+#                         data = {
+#                             "url": p.url,
+#                             "ua": USER_AGENT,
+#                             "cookie": req_headers.get('Cookie', ''),
+#                             "referer": REFERER,
+#                             "origin": req_headers.get('Origin', '')
+#                         }
+#                         break
+#                 if data: break
+#             if data: break
+            
+#             elapsed = int(time.time() - start_time)
+#             if elapsed % 15 == 0 and elapsed > 0:
+#                 print(f"  {elapsed}s elapsed...")
+
+#         if not data:
+#             print("\n[🚨] WARNING: .m3u8 link nahi mila! WAF ne block kiya ya wait time khatam.")
+            
+#     except Exception as e:
+#         print(f"\n[💥] PYTHON SCRIPT ERROR (Browser Crash):")
+#         print(traceback.format_exc())
+#     finally:
+#         if page:
+#             print("[🧹] [STEP 8] Browser band kiya ja raha hai...")
+#             page.listen.stop()
+#             page.quit()
+    
+#     return data
+
+# def calculate_sleep_time(url):
+#     try:
+#         parsed = urllib.parse.urlparse(url)
+#         params = urllib.parse.parse_qs(parsed.query)
+#         expiry_ts = None
+        
+#         if 'expires' in params: expiry_ts = int(params['expires'][0])
+#         elif 'e' in params: expiry_ts = int(params['e'][0])
+            
+#         if expiry_ts:
+#             expiry_dt = datetime.fromtimestamp(expiry_ts, PKT)
+#             wake_up_dt = expiry_dt - timedelta(minutes=5)
+#             now_dt = datetime.now(PKT)
+#             seconds = (wake_up_dt - now_dt).total_seconds()
+            
+#             print(f"[⏰] Asli Link Expiry Time: {expiry_dt.strftime('%I:%M %p')} PKT")
+#             if seconds > 0: return seconds
+#             else: return 60
+#     except Exception:
+#         pass
+#     return DEFAULT_SLEEP
+
+# def start_stream(data):
+#     headers_cmd = f"Referer: {data['referer']}\r\nUser-Agent: {data['ua']}\r\n"
+#     if data.get('cookie'):
+#         headers_cmd += f"Cookie: {data['cookie']}\r\n"
+#     if data.get('origin'):
+#         headers_cmd += f"Origin: {data['origin']}\r\n"
+    
+#     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai...")
+#     cmd = [
+#         "ffmpeg", "-re",
+#         "-loglevel", "error", 
+#         "-fflags", "+genpts",  
+#         "-headers", headers_cmd,
+#         "-user_agent", data['ua'],
+#         "-i", data['url'],
+#         "-c:v", "libx264", "-preset", "ultrafast",
+#         "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k", 
+#         "-vf", "scale=640:360", "-r", "20",                     
+#         "-c:a", "aac", "-b:a", "32k", "-ar", "44100",            
+#         "-async", "1",         
+#         "-f", "flv", RTMP_URL
+#     ]
+#     print("[⚙️] [STEP 10] FFmpeg Stream Launch ho rahi hai! (Slow Internet Optimized)")
+#     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+
+# def main():
+#     print("========================================")
+#     print("   🚀 ULTIMATE ALL-IN-ONE STREAMER (DrissionPage)")
+#     print(f"   📡 OK.RU SERVER ID: {STREAM_ID}")
+#     print(f"   🎥 BHALOCAST CHANNEL: {SOURCE_CHANNEL}")
+#     print("========================================")
+    
+#     start_time = time.time()
+#     RESTART_TIME_LIMIT = (5 * 60 * 60) + (45 * 60) # 5h 45m
+#     end_time = start_time + (6 * 60 * 60)
+    
+#     if MANUAL_FFMPEG_CMD:
+#         print("\n[🎯] ⚡ RAW FFMPEG COMMAND OVERRIDE ACTIVATED ⚡")
+#         next_run_triggered = False
+#         while time.time() < end_time:
+#             if (time.time() - start_time) > RESTART_TIME_LIMIT and not next_run_triggered:
+#                 trigger_next_run()
+#                 next_run_triggered = True
+
+#             try:
+#                 current_process = subprocess.Popen(MANUAL_FFMPEG_CMD, shell=True)
+#                 current_process.wait() 
+#             except Exception as e:
+#                 print(f"[💥] Command Error: {e}")
+                
+#             time.sleep(10)
+#         return 
+
+#     current_process = None
+#     next_run_triggered = False
+#     is_manual_mode = bool(MANUAL_M3U8)
+
+#     if is_manual_mode:
+#         data = {
+#             "url": MANUAL_M3U8,
+#             "referer": MANUAL_REFERER if MANUAL_REFERER else REFERER,
+#             "origin": MANUAL_ORIGIN,
+#             "ua": USER_AGENT,
+#             "cookie": ""
+#         }
+#     else:
+#         data = get_link_with_headers()
+
+#     while time.time() < end_time:
+#         try:
+#             if not data:
+#                 data = get_link_with_headers()
+#                 if not data:
+#                     time.sleep(60)
+#                     continue
+
+#             if current_process: current_process.terminate()
+#             current_process = start_stream(data)
+#             print("\n[🚀] SUCCESS! Video feed OK.ru par live hai!")
+            
+#             if is_manual_mode:
+#                 sleep_seconds = 10 * 60 * 60
+#             else:
+#                 sleep_seconds = calculate_sleep_time(data['url'])
+#                 print(f"[zzz] AUTO MODE: Bot {int(sleep_seconds/60)} mins rest karega...")
+            
+#             waited = 0
+#             crashed = False
+            
+#             while waited < sleep_seconds:
+#                 time.sleep(10)
+#                 waited += 10
+                
+#                 if (time.time() - start_time) > RESTART_TIME_LIMIT and not next_run_triggered:
+#                     trigger_next_run()
+#                     next_run_triggered = True 
+                    
+#                 if current_process.poll() is not None:
+#                     crashed = True
+#                     break 
+            
+#             if not is_manual_mode and not crashed:
+#                 new_data = get_link_with_headers()
+#                 if new_data:
+#                     data = new_data 
+#                 else:
+#                     current_process.wait() 
+#                     data = None 
+#             elif crashed and not is_manual_mode:
+#                 data = None 
+
+#         except Exception:
+#             print(traceback.format_exc())
+#             time.sleep(60)
+
+# if __name__ == "__main__":
+#     main()
 
 
 
