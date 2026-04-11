@@ -25,7 +25,7 @@ on:
           - 'custom_url'
         default: 'willowextra'
       stop_time:
-        description: 'Bot kyare band karvo che? (HH:MM format, e.g. 23:30)'
+        description: 'Stop Time (Sirf Hours AM/PM format, e.g. 1pm, 12am, 5am)'
         required: false
         default: ''
       target_url:
