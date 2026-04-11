@@ -8,12 +8,11 @@ from datetime import datetime, timezone, timedelta
 from DrissionPage import ChromiumPage, ChromiumOptions
 
 # ==========================================
-# ⚙️ MAIN SETTINGS (DYNAMIC FROM GITHUB)
+# ⚙️ MAIN SETTINGS
 # ==========================================
-# --- PURANA OK.RU LOGIC (Restored) ---
 STREAM_ID = str(os.environ.get('STREAM_ID', '1'))
 MULTI_KEYS = {
-    '1': os.environ.get('STREAM_KEY', '14136719122027_13152308497003_hnlk6em2e4'), # Default Key
+    '1': os.environ.get('STREAM_KEY', '14136719122027_13152308497003_hnlk6em2e4'), 
     '2': '14136743566955_13152356600427_vmdsemtmo4', 
     '3': '14136762048107_13152392710763_22fobqpsdi',  
     '4': '14136778563179_13152426265195_c5quhoj2vm'
@@ -21,7 +20,6 @@ MULTI_KEYS = {
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
 RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
 
-# --- NAYA SOURCE CHANNEL LOGIC (Bhalocast ke liye) ---
 SOURCE_CHANNEL = os.environ.get('SOURCE_CHANNEL', 'willowextra')
 
 BHALOCAST_LINKS = {
@@ -36,18 +34,17 @@ if SOURCE_CHANNEL == 'custom_url':
 else:
     TARGET_WEBSITE = BHALOCAST_LINKS.get(SOURCE_CHANNEL, BHALOCAST_LINKS['willowextra'])
 
-# File 1 wale Hardcoded Headers Bhalocast bypass ke liye
+# File 1 Hardcoded Headers
 REFERER = "https://bhalocast.com/"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-# ------------------------------------------------
 
+# (Proxy variables are here but NOT used in DrissionPage anymore, to avoid Cloudflare blocks)
 PROXY_IP = os.environ.get('PROXY_IP', '31.59.20.176')
 PROXY_PORT = os.environ.get('PROXY_PORT', '6754')
 PROXY_USER = os.environ.get('PROXY_USER', 'fzqdczzq')
 PROXY_PASS = os.environ.get('PROXY_PASS', '5ex21twl07tx')
 PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
 
-# --- MANUAL MODE INPUTS ---
 MANUAL_M3U8 = os.environ.get('MANUAL_M3U8', '').strip()
 MANUAL_REFERER = os.environ.get('MANUAL_REFERER', '').strip()
 MANUAL_ORIGIN = os.environ.get('MANUAL_ORIGIN', '').strip()
@@ -61,7 +58,6 @@ def trigger_next_run():
     print("\n" + "="*50)
     print(" ⏰ AUTO-RESTART TRIGGER ACTIVATED ⏰")
     print("="*50)
-    print(f"[🔄] 5 Ghante 45 Minute poore! Bot Restart (Server {STREAM_ID}, Channel {SOURCE_CHANNEL})...")
     
     token = os.environ.get('GH_PAT')
     repo = os.environ.get('GITHUB_REPOSITORY') 
@@ -82,7 +78,7 @@ def trigger_next_run():
         "ref": branch,
         "inputs": {
             "stream_id": STREAM_ID,
-            "source_channel": SOURCE_CHANNEL, # <-- NAYA INPUT YAHAN BHI ADD KIYA TAAYKE RESTART THEEK HO
+            "source_channel": SOURCE_CHANNEL,
             "target_url": os.environ.get('TARGET_URL', ''),
             "stream_key": STREAM_KEY,
             "proxy_ip": PROXY_IP,
@@ -108,15 +104,16 @@ def trigger_next_run():
 def get_link_with_headers():
     print(f"\n========================================")
     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
-    print(f"[🔍] [STEP 2] Proxy Set for Link Fetching: {PROXY_URL.split('@')[-1]}")
+    print(f"[⚠️] [NOTE] Proxy is DISABLED for DrissionPage to bypass Cloudflare smoothly.")
     
+    # 🚨 EXACT OPTIONS FROM YOUR WORKING TEST FILE 🚨
     opts = ChromiumOptions()
-    opts.set_argument('--no-sandbox')
-    opts.set_argument('--disable-dev-shm-usage')
-    opts.set_argument('--disable-gpu')
     opts.set_argument('--autoplay-policy=no-user-gesture-required')
+    opts.set_argument('--no-sandbox')
+    opts.set_argument('--disable-gpu')
+    opts.set_argument('--disable-dev-shm-usage')
     opts.set_argument('--mute-audio')
-    opts.set_proxy(PROXY_URL)
+    # NO PROXY SET HERE!
 
     page = None
     data = None
@@ -124,20 +121,23 @@ def get_link_with_headers():
     try:
         print(f"[⚙️] [STEP 3] Chromium Browser start ho raha hai (DrissionPage)...")
         page = ChromiumPage(addr_or_opts=opts)
+        
         page.listen.start('m3u8')
         
         print(f"[🌐] [STEP 5] Website open kar raha hoon...")
         page.get(TARGET_WEBSITE)
         
-        print("[⏳] [STEP 6] Cloudflare Turnstile bypass wait... Scanning for .m3u8 (Max 90s)")
+        print("Cloudflare Turnstile should solve automatically in real Chrome...")
+        print("Waiting up to 90 seconds for m3u8...")
         start_time = time.time()
         
+        # EXACT LOOP FROM YOUR TEST FILE
         while time.time() - start_time < 90:
             for packet in page.listen.steps(count=1, timeout=3, gap=1):
                 if packet:
                     items = packet if isinstance(packet, list) else [packet]
                     for p in items:
-                        print(f"\n🎉 [BINGO] Cloudflare Bypassed! Link Mil Gaya: {p.url}")
+                        print(f"\n[FOUND] 🎉 Link Mil Gaya: {p.url}")
                         
                         req_headers = {}
                         if hasattr(p, 'request') and hasattr(p.request, 'headers'):
@@ -188,8 +188,6 @@ def calculate_sleep_time(url):
             seconds = (wake_up_dt - now_dt).total_seconds()
             
             print(f"[⏰] Asli Link Expiry Time: {expiry_dt.strftime('%I:%M %p')} PKT")
-            print(f"[🛠️] Pre-Fetch Time: Bot {wake_up_dt.strftime('%I:%M %p')} par uthega.")
-            
             if seconds > 0: return seconds
             else: return 60
     except Exception:
@@ -254,7 +252,6 @@ def main():
     is_manual_mode = bool(MANUAL_M3U8)
 
     if is_manual_mode:
-        print("\n[🎯] ⚡ MANUAL M3U8 LINK ACTIVATED ⚡")
         data = {
             "url": MANUAL_M3U8,
             "referer": MANUAL_REFERER if MANUAL_REFERER else REFERER,
