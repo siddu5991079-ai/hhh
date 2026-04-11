@@ -1,4 +1,3 @@
-
 import os
 import time
 import subprocess
@@ -6,24 +5,35 @@ import urllib.parse
 import traceback
 import requests
 from datetime import datetime, timezone, timedelta
-
-# DrissionPage Imports (Selenium ki jagah)
 from DrissionPage import ChromiumPage, ChromiumOptions
 
 # ==========================================
 # ⚙️ MAIN SETTINGS (DYNAMIC FROM GITHUB)
 # ==========================================
-DEFAULT_URL = "https://dadocric.st/player.php?id=willowextra"
-TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
-
-# --- NAYA LOGIC: Number se Stream Key nikalna ---
 STREAM_ID = str(os.environ.get('STREAM_ID', '1'))
 
+# 🔥 FILE 1 KA LOGIC: Bhalocast Links mapped with Server ID
+BHALOCAST_LINKS = {
+    '1': "https://bhalocast.com/atoplay.php?v=wextres&hello=m1lko&expires=123456",     # willowextra
+    '2': "https://bhalocast.com/atoplay.php?v=ptvskpr&hello=m1lko&expires=123456",     # ptvskpr
+    '3': "https://bhalocast.com/atoplay.php?v=star1kibich&hello=m1lko&expires=123456", # star1kibich
+    '4': "https://bhalocast.com/penguin.php?v=ptvskpr&hello=m1lko&expires=123456"      # penguin
+}
+
+# Agar GitHub se URL nahi aata ya empty hai, toh File 1 ke Bhalocast links uthayega
+DEFAULT_URL = BHALOCAST_LINKS.get(STREAM_ID, BHALOCAST_LINKS['1'])
+TARGET_WEBSITE = os.environ.get('TARGET_URL', DEFAULT_URL)
+
+# 🔥 FILE 1 KA LOGIC: Hardcoded Headers for Bhalocast Bypass
+REFERER = "https://bhalocast.com/"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+
+# --- Stream Keys Logic ---
 MULTI_KEYS = {
     '1': os.environ.get('STREAM_KEY', '14136719122027_13152308497003_hnlk6em2e4'), # Default Key
-    '2': '14136743566955_13152356600427_vmdsemtmo4', # 👈 Apni Stream 2 ki key yahan dalein
-    '3': '14136762048107_13152392710763_22fobqpsdi',  # 👈 Apni Stream 3 ki key yahan dalein
-    '4': '14136778563179_13152426265195_c5quhoj2vm'
+    '2': '14136743566955_13152356600427_vmdsemtmo4', # 👈 Apni Stream 2 ki key
+    '3': '14136762048107_13152392710763_22fobqpsdi',  # 👈 Apni Stream 3 ki key
+    '4': '14136778563179_13152426265195_c5quhoj2vm'  # 👈 Apni Stream 4 ki key
 }
 
 STREAM_KEY = MULTI_KEYS.get(STREAM_ID, MULTI_KEYS['1'])
@@ -32,8 +42,8 @@ RTMP_URL = f"rtmp://vsu.okcdn.ru/input/{STREAM_KEY}"
 
 PROXY_IP = os.environ.get('PROXY_IP', '31.59.20.176')
 PROXY_PORT = os.environ.get('PROXY_PORT', '6754')
-PROXY_USER = os.environ.get('PROXY_USER', 'cjasfidu')
-PROXY_PASS = os.environ.get('PROXY_PASS', 'qhnyvm0qpf6p')
+PROXY_USER = os.environ.get('PROXY_USER', 'fzqdczzq')
+PROXY_PASS = os.environ.get('PROXY_PASS', '5ex21twl07tx')
 PROXY_URL = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
 
 # --- MANUAL MODE INPUTS ---
@@ -96,7 +106,7 @@ def trigger_next_run():
         print(f"[💥] API Error: {e}")
 
 def get_link_with_headers():
-    """DrissionPage se M3U8 link aur headers extract karna"""
+    """DrissionPage se M3U8 link extract karna (Bhalocast bypass ke sath)"""
     print(f"\n========================================")
     print(f"[🔍] [STEP 1] Target URL Set: {TARGET_WEBSITE}")
     print(f"[🔍] [STEP 2] Proxy Set for Link Fetching: {PROXY_URL.split('@')[-1]}")
@@ -136,16 +146,17 @@ def get_link_with_headers():
                     for p in items:
                         print(f"\n🎉 [BINGO] Cloudflare Bypassed! Link Mil Gaya: {p.url}")
                         
-                        # Headers nikalne ki koshish (DrissionPage packet se)
+                        # DrissionPage ke original headers nikalne ki koshish
                         req_headers = {}
                         if hasattr(p, 'request') and hasattr(p.request, 'headers'):
                             req_headers = p.request.headers
                         
+                        # File 1 wale Hardcoded Bhalocast Headers apply kar rahe hain
                         data = {
                             "url": p.url,
-                            "ua": req_headers.get('User-Agent', "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+                            "ua": USER_AGENT,
                             "cookie": req_headers.get('Cookie', ''),
-                            "referer": req_headers.get('Referer', TARGET_WEBSITE),
+                            "referer": REFERER,
                             "origin": req_headers.get('Origin', '')
                         }
                         break
@@ -196,11 +207,12 @@ def calculate_sleep_time(url):
 
 #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 def start_stream(data):
-    headers_cmd = f"User-Agent: {data['ua']}\r\nReferer: {data['referer']}"
+    # File 1 wali format me Headers pass ho rahe hain FFmpeg ko
+    headers_cmd = f"Referer: {data['referer']}\r\nUser-Agent: {data['ua']}\r\n"
     if data.get('cookie'):
-        headers_cmd += f"\r\nCookie: {data['cookie']}"
+        headers_cmd += f"Cookie: {data['cookie']}\r\n"
     if data.get('origin'):
-        headers_cmd += f"\r\nOrigin: {data['origin']}"
+        headers_cmd += f"Origin: {data['origin']}\r\n"
     
     print("\n[🎬] [STEP 9] FFmpeg Command tayyar ki ja rahi hai (360p ULTRA-LOW BANDWIDTH)...")
     cmd = [
@@ -208,6 +220,7 @@ def start_stream(data):
         "-loglevel", "error", 
         "-fflags", "+genpts",  
         "-headers", headers_cmd,
+        "-user_agent", data['ua'],  # Explicit user agent
         "-i", data['url'],
         "-c:v", "libx264", "-preset", "ultrafast",
         "-b:v", "300k", "-maxrate", "400k", "-bufsize", "800k", 
@@ -264,9 +277,9 @@ def main():
         print("\n[🎯] ⚡ MANUAL M3U8 LINK ACTIVATED ⚡")
         data = {
             "url": MANUAL_M3U8,
-            "referer": MANUAL_REFERER,
+            "referer": MANUAL_REFERER if MANUAL_REFERER else REFERER,
             "origin": MANUAL_ORIGIN,
-            "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "ua": USER_AGENT,
             "cookie": ""
         }
     else:
